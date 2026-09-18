@@ -14,7 +14,7 @@ export default function SetupPage() {
   const [newSessionVar, setNewSessionVar] = useState("");
   const [newFlightVar, setNewFlightVar] = useState("");
 
-  if (error) return <p className="p-6 text-red-400">{error}</p>;
+  if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data) return <p className="p-6 text-zinc-500">Cargando…</p>;
 
   const { session, flights } = data;
@@ -49,22 +49,22 @@ export default function SetupPage() {
     <main className="mx-auto max-w-[70rem] px-4 py-6">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="font-mono text-sm tracking-widest text-zinc-500">{session.code}</p>
-          <h1 className="text-2xl font-bold">{session.name}</h1>
+          <p className="kicker text-gold">{session.code}</p>
+          <h1 className="font-cond text-[30px] leading-tight font-extrabold uppercase">{session.name}</h1>
         </div>
         <Nav code={code} current="setup" />
       </header>
 
-      <p className="mb-8 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-400">
+      <p className="mb-8 rounded-[2px] border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-400">
         Los cambios se guardan al salir de cada campo. Para retocar los textos de las transmisiones, ve al{" "}
-        <Link href={`/s/${code}/guion`} className="font-semibold text-sky-400 underline">
+        <Link href={`/s/${code}/guion`} className="font-semibold text-gold underline">
           guion
         </Link>
         .
       </p>
 
       <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-400">Variables globales</h2>
+        <h2 className="mb-4 kicker text-gold">Variables globales</h2>
         <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {Object.keys(session.vars).map((k) => (
             <label key={k} className="block">
@@ -77,8 +77,8 @@ export default function SetupPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-400">Vuelos</h2>
-        <div className="overflow-x-auto rounded-lg border border-zinc-800">
+        <h2 className="mb-4 kicker text-gold">Vuelos</h2>
+        <div className="overflow-x-auto rounded-[2px] border border-zinc-800">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <thead>
               <tr className="bg-zinc-900">
@@ -150,9 +150,9 @@ function AddVar({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="nueva_variable"
-        className="flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 font-mono text-sm outline-none focus:border-sky-400"
+        className="flex-1 rounded-[2px] border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 font-mono text-sm outline-none focus:border-gold"
       />
-      <button className="rounded-md border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">
+      <button className="rounded-[2px] border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">
         Añadir
       </button>
     </form>

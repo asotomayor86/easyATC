@@ -34,6 +34,9 @@ export const GUION = guion as Guion;
 
 const AGENCIES = new Map(GUION.agencias.map((a) => [a.id, a]));
 
+/** Las nueve agencias en orden de fase. */
+export const AGENCY_LIST = [...GUION.agencias].sort((a, b) => a.fase - b.fase);
+
 export function agencyName(id: string): string {
   return AGENCIES.get(id)?.nombre ?? id;
 }

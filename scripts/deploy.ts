@@ -1,5 +1,7 @@
 // Se ejecuta en cada build de Vercel (script `vercel-build`): aplica las
-// migraciones pendientes y crea DEMO01 si aún no existe. No borra nada.
+// migraciones pendientes y deja DEMO01 al día con guion.json: la crea si no
+// existe y la vuelve a sembrar si cambia el número de pasos. Las demás
+// sesiones no se tocan.
 import { getDb } from "../src/db";
 import { ensureSession } from "../src/lib/seed";
 import { runMigrations } from "./migrate";
@@ -11,8 +13,8 @@ async function main() {
   }
   await runMigrations();
   console.log("Migraciones aplicadas.");
-  const created = await ensureSession(getDb(), "DEMO01", "Sesión de ejemplo");
-  console.log(created ? "Sesión DEMO01 creada." : "Sesión DEMO01 ya existía.");
+  const result = await ensureSession(getDb(), "DEMO01", "Sesión de ejemplo");
+  console.log(`Sesión DEMO01: ${result}.`);
 }
 
 main().catch((e) => {

@@ -34,11 +34,24 @@ export interface Step {
   note: string;
 }
 
+export type MarkStatus = "ok" | "ko";
+
 export interface Mark {
   stepId: string;
   flightId: string | null;
+  status: MarkStatus;
   doneAt: string;
   doneBy: string;
+}
+
+export type AgencyStateName = "cerrada" | "abierta" | "finalizada";
+export const AGENCY_STATES: AgencyStateName[] = ["cerrada", "abierta", "finalizada"];
+
+export interface AgencyState {
+  agency: string;
+  state: AgencyStateName;
+  changedBy: string;
+  changedAt: string;
 }
 
 export interface SessionData {
@@ -51,5 +64,6 @@ export interface StateData {
   updatedAt: string;
   contentAt: string;
   marks: Mark[];
+  agencies: AgencyState[];
   presence: Record<Role, number>;
 }

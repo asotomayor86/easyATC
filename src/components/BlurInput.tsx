@@ -5,10 +5,10 @@ import { useState } from "react";
 type Status = "idle" | "saving" | "saved" | "error";
 
 const ring: Record<Status, string> = {
-  idle: "border-zinc-700 focus:border-sky-400",
-  saving: "border-sky-500",
-  saved: "border-emerald-500/60",
-  error: "border-red-500",
+  idle: "border-zinc-700 focus:border-gold",
+  saving: "border-gold",
+  saved: "border-ok/60",
+  error: "border-ko",
 };
 
 /** Campo que guarda al perder el foco, solo si el valor ha cambiado. */
@@ -42,7 +42,7 @@ export function BlurInput({
     }
   }
 
-  const cls = `w-full rounded-md border bg-zinc-900 px-2.5 py-1.5 outline-none ${ring[status]} ${className}`;
+  const cls = `w-full rounded-[2px] border bg-zinc-900 px-2.5 py-1.5 outline-none ${ring[status]} ${className}`;
   return multiline ? (
     <textarea
       defaultValue={value}

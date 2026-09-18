@@ -22,31 +22,57 @@ export function buildRows(steps: Step[], flights: Flight[]): Row[] {
 }
 
 export interface Progress {
-  done: number;
+  done: number; // ok + ko
+  ko: number;
   total: number;
   pct: number;
-  currentAgency: string | null;
   firstPendingKey: string | null;
 }
 
-export function progressFor(role: Role, rows: Row[], marks: Map<string, Mark>): Progress {
+/** Progreso de las filas que cumplan `filter`. Las alternativas no cuentan para el total. */
+export function progressOf(rows: Row[], marks: Map<string, Mark>, filter: (r: Row) => boolean): Progress {
   let done = 0;
+  let ko = 0;
   let total = 0;
-  let firstPending: Row | null = null;
-  let lastDone: Row | null = null;
+  let firstPendingKey: string | null = null;
   for (const r of rows) {
-    if (r.step.controller !== role || r.step.alt) continue;
+    if (!filter(r)) continue;
+    const m = marks.get(r.key);
+    if (m?.status === "ko") ko++; // un error en una alternativa también cuenta como error
+    if (r.step.alt) continue;
     total++;
-    if (marks.has(r.key)) {
-      done++;
-      lastDone = r;
-    } else if (!firstPending) firstPending = r;
+    if (m) done++;
+    else if (!firstPendingKey) firstPendingKey = r.key;
   }
-  return {
-    done,
-    total,
-    pct: total ? Math.round((done / total) * 100) : 0,
-    currentAgency: (firstPending ?? lastDone)?.step.agency ?? null,
-    firstPendingKey: firstPending?.key ?? null,
-  };
+  return { done, ko, total, pct: total ? Math.round((done / total) * 100) : 0, firstPendingKey };
+}
+
+export const progressForRole = (role: Role, rows: Row[], marks: Map<string, Mark>) =>
+  progressOf(rows, marks, (r) => r.step.controller === role);
+
+export interface AgencyGroup {
+  agency: string;
+  controller: Role;
+  rows: Row[];
+}
+
+/** Agrupa las filas por agencia, en el orden en que aparecen (orden de fase). */
+export function groupByAgency(rows: Row[]): AgencyGroup[] {
+  const groups: AgencyGroup[] = [];
+  for (const r of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last.agency === r.step.agency) last.rows.push(r);
+    else groups.push({ agency: r.step.agency, controller: r.step.controller, rows: [r] });
+  }
+  return groups;
+}
+
+export function groupBySteps(rows: Row[]) {
+  const out: { step: Step; rows: Row[] }[] = [];
+  for (const r of rows) {
+    const last = out[out.length - 1];
+    if (last && last.step.id === r.step.id) last.rows.push(r);
+    else out.push({ step: r.step, rows: [r] });
+  }
+  return out;
 }

@@ -7,16 +7,17 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ code: string }> };
 
-/** Cuerpo: { stepId, flightId (null para ámbito «todos»), done, role }. */
-export async function POST(req: Request, { params }: Ctx) {
+/** Cuerpo: { stepId, flightId (null en ámbito «todos»), status: 'ok'|'ko'|null, role }. null = pendiente. */
+export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
   const stepId = typeof body?.stepId === "string" && UUID_RE.test(body.stepId) ? body.stepId : null;
   const flightId = typeof body?.flightId === "string" && UUID_RE.test(body.flightId) ? body.flightId : null;
-  const done = !!body?.done;
+  const status = body?.status === "ok" || body?.status === "ko" ? body.status : null;
+  if (body?.status != null && !status) return badRequest("status debe ser 'ok', 'ko' o null");
   const role = typeof body?.role === "string" && ROLE_RE.test(body.role) ? body.role : null;
   if (!stepId) return badRequest("Falta stepId");
-  if (done && !role) return badRequest("Falta role");
+  if (status && !role) return badRequest("Falta role");
 
   const session = await findSession(code);
   if (!session) return notFound();
@@ -40,26 +41,23 @@ export async function POST(req: Request, { params }: Ctx) {
   }
   const fid = step.scope === "vuelo" ? flightId : null;
 
+  // El batch de neon-http es una transacción: borrar y volver a insertar es atómico.
+  const remove = db
+    .delete(marks)
+    .where(and(eq(marks.stepId, stepId), fid ? eq(marks.flightId, fid) : isNull(marks.flightId)));
   const touch = db
     .update(sessions)
     .set({ updatedAt: sql`now()` })
     .where(eq(sessions.id, session.id));
 
-  if (done) {
+  if (status) {
     await db.batch([
-      db
-        .insert(marks)
-        .values({ sessionId: session.id, stepId, flightId: fid, doneBy: role! })
-        .onConflictDoNothing(),
+      remove,
+      db.insert(marks).values({ sessionId: session.id, stepId, flightId: fid, doneBy: role!, status }),
       touch,
     ]);
   } else {
-    await db.batch([
-      db
-        .delete(marks)
-        .where(and(eq(marks.stepId, stepId), fid ? eq(marks.flightId, fid) : isNull(marks.flightId))),
-      touch,
-    ]);
+    await db.batch([remove, touch]);
   }
   return json({ ok: true });
 }

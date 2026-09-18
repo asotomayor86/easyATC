@@ -1,18 +1,75 @@
 @import "tailwindcss";
 
+/*
+ * Paleta de las referencias (Escuadrón Maddog): negro, paneles un punto más
+ * claros, bordes de 1 px. El dorado es estructura e identidad; verde y rojo
+ * se reservan para estado.
+ */
+@theme {
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-cond: var(--font-barlow-cond), "Arial Narrow", ui-sans-serif, sans-serif;
+
+  /* Grises de las referencias, sobre la escala zinc para que todo la herede. */
+  --color-zinc-50: #f7f5f0;
+  --color-zinc-100: #f2efe8;
+  --color-zinc-200: #dcd9d2;
+  --color-zinc-300: #bdbcc2;
+  --color-zinc-400: #9a9aa2;
+  --color-zinc-500: #74747c;
+  --color-zinc-600: #55555d;
+  --color-zinc-700: #34343b;
+  --color-zinc-800: #26262c;
+  --color-zinc-900: #151519;
+  --color-zinc-950: #0b0b0f;
+
+  --color-gold: #c9a646;
+  --color-ok: #46c35f;
+  --color-ko: #d0564d;
+  --color-coord: #5b86c9;
+  --color-alt: #3aa58a;
+  --color-pilot: #b8736d;
+  --color-missing: #e0a23a;
+}
+
 :root {
   color-scheme: dark;
 }
 
 html {
-  background: #09090b;
+  background: var(--color-zinc-950);
 }
 
 body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Deja hueco a la cabecera fija al saltar a una fila. */
-[data-row] {
-  scroll-margin-top: 9rem;
+/* Etiqueta pequeña en mayúsculas espaciadas, como los antetítulos de las referencias. */
+.kicker {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* Área táctil de 40 px alrededor de un control visualmente más pequeño. */
+.hit {
+  position: relative;
+}
+.hit::before {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+}
+
+/* La única animación de la app: cambio de color de puntos y filas. */
+.tint {
+  transition:
+    background-color 150ms linear,
+    border-color 150ms linear,
+    color 150ms linear;
 }

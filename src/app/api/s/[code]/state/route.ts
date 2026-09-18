@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { marks } from "@/db/schema";
+import { agencyStates, marks } from "@/db/schema";
 import { json, notFound, ROLE_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
@@ -43,15 +43,27 @@ export async function GET(req: Request, { params }: Ctx) {
   const s = result.rows[0];
   if (!s) return notFound();
 
-  const markRows = await db
-    .select({
-      stepId: marks.stepId,
-      flightId: marks.flightId,
-      doneAt: marks.doneAt,
-      doneBy: marks.doneBy,
-    })
-    .from(marks)
-    .where(eq(marks.sessionId, s.id));
+  const [markRows, agencyRows] = await db.batch([
+    db
+      .select({
+        stepId: marks.stepId,
+        flightId: marks.flightId,
+        status: marks.status,
+        doneAt: marks.doneAt,
+        doneBy: marks.doneBy,
+      })
+      .from(marks)
+      .where(eq(marks.sessionId, s.id)),
+    db
+      .select({
+        agency: agencyStates.agency,
+        state: agencyStates.state,
+        changedBy: agencyStates.changedBy,
+        changedAt: agencyStates.changedAt,
+      })
+      .from(agencyStates)
+      .where(eq(agencyStates.sessionId, s.id)),
+  ]);
 
   const presence = { C1: 0, C2: 0, C3: 0 } as Record<string, number>;
   for (const p of Object.values(s.presence ?? {})) {
@@ -62,6 +74,7 @@ export async function GET(req: Request, { params }: Ctx) {
     updatedAt: new Date(s.updated_at).toISOString(),
     contentAt: new Date(s.content_at).toISOString(),
     marks: markRows,
+    agencies: agencyRows,
     presence,
   });
 }

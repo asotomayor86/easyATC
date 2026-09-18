@@ -59,7 +59,7 @@ export function Rendered({
   return parseTemplate(text, flightVars, sessionVars).map((seg, i) => {
     if (seg.kind === "missing")
       return (
-        <mark key={i} className="rounded bg-amber-400/20 px-0.5 text-amber-300 ring-1 ring-amber-400/40">
+        <mark key={i} className="rounded-sm bg-missing/15 px-0.5 text-missing ring-1 ring-missing/40">
           {seg.value}
         </mark>
       );

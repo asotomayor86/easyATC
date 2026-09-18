@@ -16,6 +16,8 @@
   "vuelos": [
     {
       "cs": "Dardo 1-1",
+      "desafio_piloto": "Uniform Alpha",
+      "respuesta_piloto": "Lima",
       "corto": "Dardo",
       "parking": "06",
       "eor": "Alpha",
@@ -38,6 +40,8 @@
     },
     {
       "cs": "Ebro 1-1",
+      "desafio_piloto": "Alpha Kilo",
+      "respuesta_piloto": "Charlie",
       "corto": "Ebro",
       "parking": "14",
       "eor": "Bravo",
@@ -60,6 +64,8 @@
     },
     {
       "cs": "Marte 1-1",
+      "desafio_piloto": "India Papa",
+      "respuesta_piloto": "Sierra",
       "corto": "Marte",
       "parking": "25",
       "eor": "Charlie",
@@ -82,6 +88,8 @@
     },
     {
       "cs": "Poker 1-1",
+      "desafio_piloto": "Uniform Bravo",
+      "respuesta_piloto": "Mike",
       "corto": "Poker",
       "parking": "33",
       "eor": "Delta",
@@ -273,6 +281,48 @@
       "orden": 11
     },
     {
+      "fase": 3,
+      "agencia": "TWR",
+      "controlador": "C1",
+      "ambito": "vuelo",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "{cs}, continúe aproximación, tráfico en pista. Le llamo.",
+      "colacion": null,
+      "hora": "",
+      "alternativa": true,
+      "nota": "Alternativa: no se autoriza todavia. Nunca dejar el silencio como negativa.",
+      "orden": 12
+    },
+    {
+      "fase": 3,
+      "agencia": "TWR",
+      "controlador": "C1",
+      "ambito": "vuelo",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "{cs}, motor y al aire, motor y al aire, motor y al aire. Tráfico en pista.",
+      "colacion": null,
+      "hora": "",
+      "alternativa": true,
+      "nota": "Frustrada obligatoria. Siempre repetida tres veces.",
+      "orden": 13
+    },
+    {
+      "fase": 3,
+      "agencia": "TWR",
+      "controlador": "C1",
+      "ambito": "todos",
+      "inicia": "coord",
+      "texto_piloto": null,
+      "texto_atc": "COORDINACIÓN · TWR → SAL: los cuatro vuelos en el aire, todos por Ketilari. Pista libre para el tráfico de las nueve treinta y ocho.",
+      "colacion": null,
+      "hora": "09:37",
+      "alternativa": false,
+      "nota": "",
+      "orden": 14
+    },
+    {
       "fase": 4,
       "agencia": "DEP",
       "controlador": "C2",
@@ -284,7 +334,7 @@
       "hora": "09:30",
       "alternativa": false,
       "nota": "",
-      "orden": 12
+      "orden": 15
     },
     {
       "fase": 4,
@@ -298,7 +348,7 @@
       "hora": "09:35",
       "alternativa": false,
       "nota": "",
-      "orden": 13
+      "orden": 16
     },
     {
       "fase": 4,
@@ -312,7 +362,7 @@
       "hora": "09:36",
       "alternativa": false,
       "nota": "",
-      "orden": 14
+      "orden": 17
     },
     {
       "fase": 4,
@@ -326,7 +376,7 @@
       "hora": "09:36",
       "alternativa": false,
       "nota": "",
-      "orden": 15
+      "orden": 18
     },
     {
       "fase": 5,
@@ -340,7 +390,7 @@
       "hora": "09:39",
       "alternativa": false,
       "nota": "",
-      "orden": 16
+      "orden": 19
     },
     {
       "fase": 5,
@@ -354,7 +404,21 @@
       "hora": "09:39",
       "alternativa": false,
       "nota": "",
-      "orden": 17
+      "orden": 20
+    },
+    {
+      "fase": 5,
+      "agencia": "BS",
+      "controlador": "C3",
+      "ambito": "vuelo",
+      "inicia": "piloto",
+      "texto_piloto": "{poligono}, {cs}, {desafio_piloto}.",
+      "texto_atc": "{cs}, {respuesta_piloto}. Good challenge.",
+      "colacion": null,
+      "hora": "09:40",
+      "alternativa": false,
+      "nota": "Autenticacion en sentido contrario: el vuelo desafia al controlador.",
+      "orden": 21
     },
     {
       "fase": 5,
@@ -368,7 +432,7 @@
       "hora": "09:40",
       "alternativa": false,
       "nota": "",
-      "orden": 18
+      "orden": 22
     },
     {
       "fase": 5,
@@ -382,7 +446,7 @@
       "hora": "09:42",
       "alternativa": false,
       "nota": "",
-      "orden": 19
+      "orden": 23
     },
     {
       "fase": 5,
@@ -396,7 +460,7 @@
       "hora": "09:45",
       "alternativa": false,
       "nota": "",
-      "orden": 20
+      "orden": 24
     },
     {
       "fase": 5,
@@ -410,7 +474,7 @@
       "hora": "09:45",
       "alternativa": false,
       "nota": "",
-      "orden": 21
+      "orden": 25
     },
     {
       "fase": 5,
@@ -424,7 +488,7 @@
       "hora": "09:46",
       "alternativa": false,
       "nota": "",
-      "orden": 22
+      "orden": 26
     },
     {
       "fase": 5,
@@ -438,7 +502,7 @@
       "hora": "09:46",
       "alternativa": true,
       "nota": "Alternativa al Hammer Time. Spin Alpha = +2 minutos sobre todos los push times.",
-      "orden": 23
+      "orden": 27
     },
     {
       "fase": 5,
@@ -452,7 +516,7 @@
       "hora": "09:46",
       "alternativa": true,
       "nota": "Alternativa al Hammer Time. Spin Bravo = +4 minutos sobre todos los push times.",
-      "orden": 24
+      "orden": 28
     },
     {
       "fase": 5,
@@ -466,7 +530,7 @@
       "hora": "09:46",
       "alternativa": true,
       "nota": "Alternativa al Hammer Time. Spin Charlie = +6 minutos sobre todos los push times.",
-      "orden": 25
+      "orden": 29
     },
     {
       "fase": 5,
@@ -480,7 +544,7 @@
       "hora": "09:48",
       "alternativa": false,
       "nota": "",
-      "orden": 26
+      "orden": 30
     },
     {
       "fase": 5,
@@ -494,7 +558,7 @@
       "hora": "09:50",
       "alternativa": false,
       "nota": "",
-      "orden": 27
+      "orden": 31
     },
     {
       "fase": 5,
@@ -508,7 +572,7 @@
       "hora": "09:52",
       "alternativa": false,
       "nota": "",
-      "orden": 28
+      "orden": 32
     },
     {
       "fase": 5,
@@ -522,7 +586,7 @@
       "hora": "09:52",
       "alternativa": false,
       "nota": "Los números salen del script de puntuación de la misión, en pantalla.",
-      "orden": 29
+      "orden": 33
     },
     {
       "fase": 5,
@@ -536,7 +600,7 @@
       "hora": "09:56",
       "alternativa": false,
       "nota": "",
-      "orden": 30
+      "orden": 34
     },
     {
       "fase": 5,
@@ -550,7 +614,35 @@
       "hora": "09:56",
       "alternativa": false,
       "nota": "",
-      "orden": 31
+      "orden": 35
+    },
+    {
+      "fase": 5,
+      "agencia": "BS",
+      "controlador": "C3",
+      "ambito": "vuelo",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "{cs}, ABORTE, ABORTE, ABORTE.",
+      "colacion": null,
+      "hora": "",
+      "alternativa": true,
+      "nota": "Circuito no limpio, eje incorrecto o por debajo de minimas. Siempre tres veces.",
+      "orden": 36
+    },
+    {
+      "fase": 5,
+      "agencia": "BS",
+      "controlador": "C3",
+      "ambito": "todos",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "Todas las estaciones, {poligono}, ALTO AL FUEGO, ALTO AL FUEGO, ALTO AL FUEGO.",
+      "colacion": null,
+      "hora": "",
+      "alternativa": true,
+      "nota": "Para el poligono entero. Todos suben al nivel de espera.",
+      "orden": 37
     },
     {
       "fase": 5,
@@ -564,7 +656,7 @@
       "hora": "10:05",
       "alternativa": false,
       "nota": "",
-      "orden": 32
+      "orden": 38
     },
     {
       "fase": 6,
@@ -578,7 +670,7 @@
       "hora": "10:04",
       "alternativa": false,
       "nota": "",
-      "orden": 33
+      "orden": 39
     },
     {
       "fase": 6,
@@ -592,7 +684,7 @@
       "hora": "10:11",
       "alternativa": true,
       "nota": "Alternativa cuando coincide con una llegada de la IA, que tiene prioridad.",
-      "orden": 34
+      "orden": 40
     },
     {
       "fase": 6,
@@ -606,7 +698,7 @@
       "hora": "10:18",
       "alternativa": true,
       "nota": "Solo si antes se le mandó a la espera.",
-      "orden": 35
+      "orden": 41
     },
     {
       "fase": 6,
@@ -620,7 +712,7 @@
       "hora": "10:05",
       "alternativa": false,
       "nota": "",
-      "orden": 36
+      "orden": 42
     },
     {
       "fase": 7,
@@ -634,7 +726,63 @@
       "hora": "10:08",
       "alternativa": false,
       "nota": "",
-      "orden": 37
+      "orden": 43
+    },
+    {
+      "fase": 7,
+      "agencia": "TWR2",
+      "controlador": "C2",
+      "ambito": "vuelo",
+      "inicia": "piloto",
+      "texto_piloto": "Senaki Torre, {cs}, rotura.  /  {corto} 1-2, rotura.",
+      "texto_atc": "{cs}, recibido rotura.",
+      "colacion": null,
+      "hora": "10:09",
+      "alternativa": false,
+      "nota": "Cada aparato canta la suya, una milla despues del anterior.",
+      "orden": 44
+    },
+    {
+      "fase": 7,
+      "agencia": "TWR2",
+      "controlador": "C2",
+      "ambito": "vuelo",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "{cs}, continúe aproximación, tráfico despegando de la {pista}. Le llamo la rotura.",
+      "colacion": "Continuamos aproximación, {cs}.",
+      "hora": "",
+      "alternativa": true,
+      "nota": "Alternativa cuando coincide con una salida de la IA.",
+      "orden": 45
+    },
+    {
+      "fase": 7,
+      "agencia": "TWR2",
+      "controlador": "C2",
+      "ambito": "vuelo",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "{cs}, pista libre. Autorizado aterrizaje en formación con rotura a izquierda en la {pista}, viento {viento}.",
+      "colacion": null,
+      "hora": "",
+      "alternativa": true,
+      "nota": "Continuacion de la anterior, una vez despejada la pista.",
+      "orden": 46
+    },
+    {
+      "fase": 7,
+      "agencia": "TWR2",
+      "controlador": "C2",
+      "ambito": "vuelo",
+      "inicia": "atc",
+      "texto_piloto": null,
+      "texto_atc": "{cs}, motor y al aire, motor y al aire, motor y al aire.",
+      "colacion": null,
+      "hora": "",
+      "alternativa": true,
+      "nota": "Frustrada obligatoria.",
+      "orden": 47
     },
     {
       "fase": 7,
@@ -648,7 +796,7 @@
       "hora": "10:10",
       "alternativa": false,
       "nota": "",
-      "orden": 38
+      "orden": 48
     },
     {
       "fase": 7,
@@ -662,7 +810,7 @@
       "hora": "10:11",
       "alternativa": false,
       "nota": "",
-      "orden": 39
+      "orden": 49
     },
     {
       "fase": 7,
@@ -676,7 +824,7 @@
       "hora": "10:12",
       "alternativa": false,
       "nota": "",
-      "orden": 40
+      "orden": 50
     },
     {
       "fase": 8,
@@ -690,7 +838,7 @@
       "hora": "10:12",
       "alternativa": false,
       "nota": "",
-      "orden": 41
+      "orden": 51
     },
     {
       "fase": 8,
@@ -704,7 +852,7 @@
       "hora": "10:14",
       "alternativa": false,
       "nota": "",
-      "orden": 42
+      "orden": 52
     },
     {
       "fase": 9,
@@ -718,7 +866,7 @@
       "hora": "10:10",
       "alternativa": false,
       "nota": "",
-      "orden": 43
+      "orden": 53
     },
     {
       "fase": 9,
@@ -732,7 +880,7 @@
       "hora": "10:15",
       "alternativa": false,
       "nota": "",
-      "orden": 44
+      "orden": 54
     },
     {
       "fase": 9,
@@ -746,7 +894,7 @@
       "hora": "10:16",
       "alternativa": false,
       "nota": "",
-      "orden": 45
+      "orden": 55
     }
   ],
   "agencias": [

@@ -77,10 +77,28 @@ export const marks = pgTable(
     flightId: uuid("flight_id").references(() => flights.id, { onDelete: "cascade" }),
     doneAt: timestamp("done_at", { withTimezone: true }).notNull().defaultNow(),
     doneBy: text("done_by").notNull(),
+    // 'ok' = bien transmitida, 'ko' = con error. Sin fila = pendiente.
+    status: text("status").notNull().default("ok"),
   },
   (t) => [
     // NULLS NOT DISTINCT: los pasos de ámbito «todos» (flight_id nulo) también son únicos.
     unique("marks_step_flight_uq").on(t.stepId, t.flightId).nullsNotDistinct(),
     index("marks_session_idx").on(t.sessionId),
   ],
+);
+
+export const agencyStates = pgTable(
+  "agency_states",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    agency: text("agency").notNull(),
+    // 'cerrada' | 'abierta' | 'finalizada'. Sin fila = cerrada.
+    state: text("state").notNull(),
+    changedBy: text("changed_by").notNull(),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("agency_states_session_agency_uq").on(t.sessionId, t.agency)],
 );

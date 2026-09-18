@@ -4,8 +4,8 @@ export function Nav({ code, current }: { code: string; current: "vista" | "setup
   const item = (href: string, label: string, key: string) => (
     <Link
       href={href}
-      className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-        current === key ? "bg-zinc-700 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+      className={`rounded-[2px] px-3 py-1.5 text-sm font-medium ${
+        current === key ? "border border-gold text-gold" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
       }`}
     >
       {label}

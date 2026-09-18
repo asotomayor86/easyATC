@@ -87,6 +87,14 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   cambio se aplica a los cuatro vuelos de esa sesión, y solo a esa sesión.
 - **`/s/CODIGO`** — vista del controlador. Elige C1, C2 o C3; el rol se
   recuerda en ese navegador y se cambia pulsando el rol en la cabecera.
+  Se ven las nueve agencias; las de otros controladores, atenuadas.
+  - Cada transmisión se marca como correcta (✓) o con error (✕); pulsar el
+    botón activo la devuelve a pendiente. Tocar algo de otro controlador pide
+    confirmación.
+  - Las fichas de agencia de la cabecera pasan de cerrada → abierta →
+    finalizada → cerrada con cada toque.
+  - Los rieles de puntos resumen toda la misión; pulsar un punto salta a esa
+    transmisión. Se pliegan desde el menú ⋯.
 
 En los textos, `{variable}` se sustituye por su valor (primero la del vuelo,
 luego la global). Si falta, aparece en ámbar. Los `[huecos]` en gris se rellenan
