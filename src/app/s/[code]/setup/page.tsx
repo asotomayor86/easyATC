@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { BlurInput } from "@/components/BlurInput";
+import { MissionFileButtons } from "@/components/MissionFileButtons";
 import { Nav } from "@/components/Nav";
 import { api, useSessionData } from "@/lib/client";
 import type { Flight } from "@/lib/types";
@@ -13,6 +14,8 @@ export default function SetupPage() {
   const { data, error, reload } = useSessionData(code);
   const [newSessionVar, setNewSessionVar] = useState("");
   const [newFlightVar, setNewFlightVar] = useState("");
+  // Tras importar, se vuelven a montar los campos para que muestren lo nuevo.
+  const [version, setVersion] = useState(0);
 
   if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data) return <p className="p-6 text-zinc-500">Cargando…</p>;
@@ -52,7 +55,16 @@ export default function SetupPage() {
           <p className="kicker text-gold">{session.code}</p>
           <h1 className="font-cond text-[30px] leading-tight font-extrabold uppercase">{session.name}</h1>
         </div>
-        <Nav code={code} current="setup" />
+        <div className="flex flex-col items-end gap-2">
+          <Nav code={code} current="setup" />
+          <MissionFileButtons
+            data={data}
+            onImported={async () => {
+              await reload();
+              setVersion((v) => v + 1);
+            }}
+          />
+        </div>
       </header>
 
       <p className="mb-8 rounded-[2px] border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-400">
@@ -63,6 +75,7 @@ export default function SetupPage() {
         .
       </p>
 
+      <div key={version}>
       <section className="mb-12">
         <h2 className="mb-4 kicker text-gold">Variables globales</h2>
         <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -116,6 +129,7 @@ export default function SetupPage() {
         </div>
         <AddVar value={newFlightVar} onChange={setNewFlightVar} onSubmit={addFlightVar} />
       </section>
+      </div>
     </main>
   );
 }

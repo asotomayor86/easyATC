@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { BlurInput } from "@/components/BlurInput";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
+import { MissionFileButtons } from "@/components/MissionFileButtons";
 import { Nav } from "@/components/Nav";
 import { api, useSessionData } from "@/lib/client";
 import { agencyName } from "@/lib/guion";
@@ -14,6 +15,8 @@ export default function GuionPage() {
   const { data, error, reload } = useSessionData(code);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [busy, setBusy] = useState(false);
+  // Tras importar, se vuelven a montar los campos para que muestren lo nuevo.
+  const [version, setVersion] = useState(0);
 
   if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data) return <p className="p-6 text-zinc-500">Cargando…</p>;
@@ -62,7 +65,16 @@ export default function GuionPage() {
           <p className="kicker text-gold">{data.session.code}</p>
           <h1 className="font-cond text-[30px] leading-tight font-extrabold uppercase">Guion · {data.steps.length} pasos</h1>
         </div>
-        <Nav code={code} current="guion" />
+        <div className="flex flex-col items-end gap-2">
+          <Nav code={code} current="guion" />
+          <MissionFileButtons
+            data={data}
+            onImported={async () => {
+              await reload();
+              setVersion((v) => v + 1);
+            }}
+          />
+        </div>
       </header>
 
       <p className="mb-8 rounded-[2px] border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-400">
@@ -71,6 +83,7 @@ export default function GuionPage() {
         del campo.
       </p>
 
+      <div key={version}>
       {[...phases.entries()].map(([phase, steps]) => (
         <section key={phase} className="mb-10">
           <h2 className="sticky top-0 z-10 -mx-4 mb-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2 font-cond text-[20px] font-bold uppercase tracking-wide">
@@ -130,6 +143,7 @@ export default function GuionPage() {
           </ol>
         </section>
       ))}
+      </div>
       <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
     </main>
   );

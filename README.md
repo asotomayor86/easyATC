@@ -87,6 +87,10 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   cambio se aplica a los cuatro vuelos de esa sesión, y solo a esa sesión.
   Cada comunicación tiene «+ Añadir debajo» (crea una nueva con la misma
   agencia, controlador y hora, y textos vacíos) y «Quitar».
+- **Exportar / Importar JSON** (en Guion y en Variables) — descarga o carga la
+  misión completa (variables, vuelos y guion) en el formato de `guion.json`.
+  Importar sustituye todo eso en la sesión y borra sus marcas, el estado de
+  las agencias y la hora de inicio; si el archivo no es válido, no se toca nada.
 - **`/s/CODIGO`** — vista del controlador. Elige C1, C2 o C3; el rol se
   recuerda en ese navegador y se cambia pulsando el rol en la cabecera.
   Las nueve agencias van una al lado de otra: la de trabajo en el centro y
