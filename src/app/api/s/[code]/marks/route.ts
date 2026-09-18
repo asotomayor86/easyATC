@@ -7,14 +7,14 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ code: string }> };
 
-/** Cuerpo: { stepId, flightId (null en ámbito «todos»), status: 'ok'|'warn'|'ko'|null, role }. null = pendiente. */
+/** Cuerpo: { stepId, flightId (null en ámbito «todos»), status: 'ok'|'warn'|'ko'|'na'|null, role }. null = pendiente. */
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
   const stepId = typeof body?.stepId === "string" && UUID_RE.test(body.stepId) ? body.stepId : null;
   const flightId = typeof body?.flightId === "string" && UUID_RE.test(body.flightId) ? body.flightId : null;
-  const status = ["ok", "warn", "ko"].includes(body?.status) ? (body.status as string) : null;
-  if (body?.status != null && !status) return badRequest("status debe ser 'ok', 'warn', 'ko' o null");
+  const status = ["ok", "warn", "ko", "na"].includes(body?.status) ? (body.status as string) : null;
+  if (body?.status != null && !status) return badRequest("status debe ser 'ok', 'warn', 'ko', 'na' o null");
   const role = typeof body?.role === "string" && ROLE_RE.test(body.role) ? body.role : null;
   if (!stepId) return badRequest("Falta stepId");
   if (status && !role) return badRequest("Falta role");

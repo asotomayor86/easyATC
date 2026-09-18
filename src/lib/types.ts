@@ -34,8 +34,8 @@ export interface Step {
   note: string;
 }
 
-export type MarkStatus = "ok" | "warn" | "ko";
-export const MARK_STATUSES: MarkStatus[] = ["ok", "warn", "ko"];
+export type MarkStatus = "ok" | "warn" | "ko" | "na";
+export const MARK_STATUSES: MarkStatus[] = ["ok", "warn", "ko", "na"];
 
 export interface Mark {
   stepId: string;

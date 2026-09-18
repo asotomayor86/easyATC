@@ -22,10 +22,11 @@ export function buildRows(steps: Step[], flights: Flight[]): Row[] {
 }
 
 export interface Progress {
-  done: number; // ok + warn + ko
+  done: number; // ok + warn + ko + na
   ok: number;
   warn: number;
   ko: number;
+  na: number;
   total: number;
   pct: number;
   firstPendingKey: string | null;
@@ -37,6 +38,7 @@ export function progressOf(rows: Row[], marks: Map<string, Mark>, filter: (r: Ro
   let ok = 0;
   let warn = 0;
   let ko = 0;
+  let na = 0;
   let total = 0;
   let firstPendingKey: string | null = null;
   for (const r of rows) {
@@ -46,16 +48,40 @@ export function progressOf(rows: Row[], marks: Map<string, Mark>, filter: (r: Ro
     if (m?.status === "ok") ok++;
     else if (m?.status === "warn") warn++;
     else if (m?.status === "ko") ko++;
+    else if (m?.status === "na") na++;
     if (r.step.alt) continue;
     total++;
     if (m) done++;
     else if (!firstPendingKey) firstPendingKey = r.key;
   }
-  return { done, ok, warn, ko, total, pct: total ? Math.round((done / total) * 100) : 0, firstPendingKey };
+  return { done, ok, warn, ko, na, total, pct: total ? Math.round((done / total) * 100) : 0, firstPendingKey };
 }
 
 export const progressForRole = (role: Role, rows: Row[], marks: Map<string, Mark>) =>
   progressOf(rows, marks, (r) => r.step.controller === role);
+
+export interface FlightGroup {
+  key: string; // id del vuelo, o "*" para las transmisiones a todos
+  flight: Flight | null;
+  rows: Row[];
+}
+
+/**
+ * Agrupa las filas de una agencia por vuelo. Las de ámbito «todos» forman su
+ * propio grupo. Los grupos quedan en el orden de su primera transmisión.
+ */
+export function groupByFlight(rows: Row[]): FlightGroup[] {
+  const groups = new Map<string, FlightGroup>();
+  for (const r of rows) {
+    const key = r.flight?.id ?? "*";
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { key, flight: r.flight, rows: [] }));
+    g.rows.push(r);
+  }
+  return [...groups.values()];
+}
+
+export const foldKey = (agency: string, groupKey: string) => `${agency}:${groupKey}`;
 
 export interface AgencyGroup {
   agency: string;

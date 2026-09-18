@@ -83,7 +83,7 @@ export const Rails = memo(function Rails({
         {flights.map((f) => {
           let done = 0;
           let total = 0;
-          const n = { ok: 0, warn: 0, ko: 0 };
+          const n = { ok: 0, warn: 0, ko: 0, na: 0 };
           for (const s of steps) {
             const m = marks.get(keyFor(s, f));
             if (m) n[m.status]++;
@@ -129,6 +129,10 @@ function Dot({
           ? alt
             ? "border-ko"
             : "border-ko bg-ko"
+          : status === "na"
+            ? alt
+              ? "border-na"
+              : "border-na bg-na"
         : alt
           ? "border-zinc-500"
           : "border-zinc-700 bg-zinc-700";

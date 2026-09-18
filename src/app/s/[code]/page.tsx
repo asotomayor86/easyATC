@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { AgencyChips } from "@/components/AgencyChips";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { Rails } from "@/components/Rails";
@@ -13,8 +14,9 @@ import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
 import { overlay, useOverrides } from "@/lib/optimistic";
 import {
   buildRows,
+  foldKey,
   groupByAgency,
-  groupBySteps,
+  groupByFlight,
   progressForRole,
   progressOf,
   rowKey,
@@ -325,12 +327,58 @@ export default function ControllerPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [goTo]);
 
+  // --- Grupos de vuelo plegados, recordados en este navegador ---
+  const foldStore = `easyatc:fold:${code}`;
+  const [folded, setFolded] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    try {
+      setFolded(new Set(JSON.parse(localStorage.getItem(foldStore) ?? "[]")));
+    } catch {}
+  }, [foldStore]);
+  const updateFolded = useCallback(
+    (fn: (s: Set<string>) => Set<string>) =>
+      setFolded((prev) => {
+        const next = fn(prev);
+        try {
+          localStorage.setItem(foldStore, JSON.stringify([...next]));
+        } catch {}
+        return next;
+      }),
+    [foldStore],
+  );
+  const toggleFold = useCallback(
+    (key: string) =>
+      updateFolded((s) => {
+        const n = new Set(s);
+        if (n.has(key)) n.delete(key);
+        else n.add(key);
+        return n;
+      }),
+    [updateFolded],
+  );
+  const foldMany = useCallback(
+    (keys: string[], fold: boolean) =>
+      updateFolded((s) => {
+        const n = new Set(s);
+        for (const k of keys) {
+          if (fold) n.add(k);
+          else n.delete(k);
+        }
+        return n;
+      }),
+    [updateFolded],
+  );
+  // Fila → grupo que la contiene, para desplegarlo antes de saltar a ella.
+  const rowFoldKey = useRef(new Map<string, string>());
+
   // --- Saltar a una fila: centra su agencia, baja hasta ella y la resalta un segundo ---
   const [highlight, setHighlight] = useState<string | null>(null);
   const hlTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const jumpTo = useCallback(
     (key: string | null) => {
       if (!key) return;
+      const fk = rowFoldKey.current.get(key);
+      if (fk) flushSync(() => foldMany([fk], false));
       const el = document.querySelector<HTMLElement>(`[data-row="${key}"]`);
       const col = el?.closest<HTMLElement>("[data-col]");
       if (!el || !col) return;
@@ -341,12 +389,15 @@ export default function ControllerPage() {
       clearTimeout(hlTimer.current);
       hlTimer.current = setTimeout(() => setHighlight(null), 1000);
     },
-    [goTo],
+    [goTo, foldMany],
   );
 
   // --- Derivados ---
   const rows = useMemo(() => (data ? buildRows(data.steps, data.flights) : []), [data]);
   const groups = useMemo(() => groupByAgency(rows), [rows]);
+  useMemo(() => {
+    rowFoldKey.current = new Map(rows.map((r) => [r.key, foldKey(r.step.agency, r.flight?.id ?? "*")]));
+  }, [rows]);
   const progress = useMemo(
     () => Object.fromEntries(ROLES.map((r) => [r, progressForRole(r, rows, marks)])) as Record<Role, Progress>,
     [rows, marks],
@@ -402,7 +453,7 @@ export default function ControllerPage() {
               <div className="h-1 max-w-[240px] flex-1 bg-zinc-800">
                 <div className="h-full bg-ok" style={{ width: `${mine.pct}%` }} />
               </div>
-              <StatusCounts ok={mine.ok} warn={mine.warn} ko={mine.ko} />
+              <StatusCounts ok={mine.ok} warn={mine.warn} ko={mine.ko} na={mine.na} />
               <span className="hidden gap-3 border-l border-zinc-800 pl-3 md:flex">
                 {ROLES.filter((r) => r !== role).map((r) => (
                   <span key={r} className="kicker text-zinc-500">
@@ -467,6 +518,9 @@ export default function ControllerPage() {
                 highlight={highlight}
                 onSet={onSet}
                 onSetState={onAgencySet}
+                folded={folded}
+                onToggleFold={toggleFold}
+                onFoldMany={foldMany}
               />
             </div>
           ))}
@@ -490,6 +544,9 @@ const AgencySection = memo(function AgencySection({
   highlight,
   onSet,
   onSetState,
+  folded,
+  onToggleFold,
+  onFoldMany,
 }: {
   group: AgencyGroup;
   mine: boolean;
@@ -500,7 +557,12 @@ const AgencySection = memo(function AgencySection({
   highlight: string | null;
   onSet: SetStatus;
   onSetState: (agency: string, state: AgencyStateName) => void;
+  folded: Set<string>;
+  onToggleFold: (key: string) => void;
+  onFoldMany: (keys: string[], fold: boolean) => void;
 }) {
+  const flightGroups = groupByFlight(group.rows);
+  const keys = flightGroups.map((g) => foldKey(group.agency, g.key));
   return (
     <section
       className={`min-w-0 rounded-[2px] border border-zinc-800 bg-zinc-900/50 ${mine ? "" : "opacity-[0.55]"}`}
@@ -520,45 +582,79 @@ const AgencySection = memo(function AgencySection({
           </h2>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
+            +
+          </FoldButton>
+          <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
+            −
+          </FoldButton>
           <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
           <Badge tone={mine ? "gold" : "mute"}>
             {progress.done}/{progress.total}
           </Badge>
           {progress.warn > 0 && <Badge tone="warn">{progress.warn} WARN</Badge>}
           {progress.ko > 0 && <Badge tone="ko">{progress.ko} KO</Badge>}
+          {progress.na > 0 && <Badge tone="na">{progress.na} NA</Badge>}
         </div>
       </header>
 
       <div className="divide-y divide-zinc-800">
-        {groupBySteps(group.rows).map(({ step, rows }) => {
-          const coord = step.initiator === "coord";
+        {flightGroups.map((fg) => {
+          const key = foldKey(group.agency, fg.key);
+          const isFolded = folded.has(key);
+          const p = progressOf(fg.rows, marks, () => true);
           return (
-            <article
-              key={step.id}
-              className={`border-l-2 ${coord ? "border-l-coord" : step.alt ? "border-l-alt" : "border-l-transparent"}`}
-            >
-              {(step.alt || coord || step.note) && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pt-1.5 text-[12px]">
-                  {step.alt && <Badge tone="alt">Alternativa</Badge>}
-                  {coord && <Badge tone="coord">Coordinación</Badge>}
-                  {step.note && <span className="text-zinc-400">{step.note}</span>}
+            <div key={fg.key}>
+              <button
+                type="button"
+                onClick={() => onToggleFold(key)}
+                aria-expanded={!isFolded}
+                className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 bg-zinc-900/80 px-3 py-2 text-left hover:bg-zinc-800/60"
+              >
+                <span className="w-3 text-[11px] text-gold">{isFolded ? "▶" : "▼"}</span>
+                <span className="font-cond text-[16px] leading-none font-bold tracking-wide uppercase">
+                  {fg.flight ? fg.flight.callsign : "Todas las estaciones"}
+                </span>
+                <span className="kicker text-[10px] text-zinc-400">
+                  {p.done}/{p.total}
+                </span>
+                <span className="ml-auto">
+                  <StatusCounts ok={p.ok} warn={p.warn} ko={p.ko} na={p.na} />
+                </span>
+              </button>
+              {!isFolded && (
+                <div className="divide-y divide-zinc-800/60 border-t border-zinc-800/60">
+                  {fg.rows.map((r) => {
+                    const step = r.step;
+                    const coord = step.initiator === "coord";
+                    return (
+                      <article
+                        key={r.key}
+                        className={`border-l-2 ${coord ? "border-l-coord" : step.alt ? "border-l-alt" : "border-l-transparent"}`}
+                      >
+                        {(step.alt || coord || step.note) && (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pt-1.5 text-[12px]">
+                            {step.alt && <Badge tone="alt">Alternativa</Badge>}
+                            {coord && <Badge tone="coord">Coordinación</Badge>}
+                            {step.note && <span className="text-zinc-400">{step.note}</span>}
+                          </div>
+                        )}
+                        <StepRow
+                          rowKey={r.key}
+                          step={step}
+                          flight={r.flight}
+                          mark={marks.get(r.key)}
+                          sessionVars={sessionVars}
+                          highlighted={highlight === r.key}
+                          onSet={onSet}
+                          showCallsign={false}
+                        />
+                      </article>
+                    );
+                  })}
                 </div>
               )}
-              <div className="divide-y divide-zinc-800/60">
-                {rows.map((r) => (
-                  <StepRow
-                    key={r.key}
-                    rowKey={r.key}
-                    step={r.step}
-                    flight={r.flight}
-                    mark={marks.get(r.key)}
-                    sessionVars={sessionVars}
-                    highlighted={highlight === r.key}
-                    onSet={onSet}
-                  />
-                ))}
-              </div>
-            </article>
+            </div>
           );
         })}
       </div>
@@ -596,6 +692,20 @@ function SideButton({
   );
 }
 
+function FoldButton({ label, onClick, children }: { label: string; onClick: () => void; children: string }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className="flex h-[23px] w-[23px] items-center justify-center rounded-[2px] border border-zinc-700 font-cond text-[16px] leading-none font-bold text-zinc-300 hover:border-gold hover:text-gold"
+    >
+      {children}
+    </button>
+  );
+}
+
 const STATE_BUTTONS: { state: AgencyStateName; label: string; active: string }[] = [
   { state: "cerrada", label: "Cerrada", active: "border-zinc-500 bg-zinc-700 text-zinc-100" },
   { state: "abierta", label: "Abierta", active: "border-ok bg-ok text-zinc-950" },
@@ -627,6 +737,7 @@ const BADGE_TONES = {
   gold: "border-gold/70 text-gold",
   warn: "border-warn/70 text-warn",
   ko: "border-ko/70 text-ko",
+  na: "border-na/60 text-na",
   coord: "border-coord/70 text-coord",
   alt: "border-alt/70 text-alt",
   mute: "border-zinc-700 text-zinc-400",

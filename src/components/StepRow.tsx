@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Rendered } from "@/lib/template";
 import { MARK_STATUSES, type Flight, type Mark, type MarkStatus, type Step, type Vars } from "@/lib/types";
 
-const STATUS_TEXT: Record<MarkStatus, string> = { ok: "text-ok", warn: "text-warn", ko: "text-ko" };
+const STATUS_TEXT: Record<MarkStatus, string> = { ok: "text-ok", warn: "text-warn", ko: "text-ko", na: "text-na" };
 
 const EMPTY: Vars = {};
 
@@ -22,6 +22,7 @@ export const StepRow = memo(function StepRow({
   sessionVars,
   highlighted,
   onSet,
+  showCallsign = true,
 }: {
   rowKey: string;
   step: Step;
@@ -30,6 +31,8 @@ export const StepRow = memo(function StepRow({
   sessionVars: Vars;
   highlighted: boolean;
   onSet: SetStatus;
+  /** Dentro de un grupo de vuelo el indicativo ya está en la cabecera del grupo. */
+  showCallsign?: boolean;
 }) {
   const status = mark?.status ?? null;
   const fv = flight?.vars ?? EMPTY;
@@ -49,10 +52,16 @@ export const StepRow = memo(function StepRow({
         ))}
       </div>
 
-      <div className="flex min-w-0 items-baseline gap-2 pt-[3px] sm:w-[88px] sm:shrink-0 sm:flex-col sm:gap-0">
-        <span className="font-cond text-[14px] leading-tight font-semibold text-zinc-100">
-          {flight ? flight.callsign : "Todos"}
-        </span>
+      <div
+        className={`flex min-w-0 items-baseline gap-2 pt-[3px] sm:shrink-0 sm:flex-col sm:gap-0 ${
+          showCallsign ? "sm:w-[88px]" : "sm:w-[40px]"
+        }`}
+      >
+        {showCallsign && (
+          <span className="font-cond text-[14px] leading-tight font-semibold text-zinc-100">
+            {flight ? flight.callsign : "Todos"}
+          </span>
+        )}
         <span className="text-[12px] text-zinc-500">{step.eta}</span>
       </div>
 
@@ -64,7 +73,7 @@ export const StepRow = memo(function StepRow({
         )}
         <p
           className={`tint text-[15px] font-semibold ${
-            status === "ok" ? "text-zinc-500" : step.initiator === "coord" ? "text-[#a9c1e6]" : "text-zinc-50"
+            status === "ok" || status === "na" ? "text-zinc-500" : step.initiator === "coord" ? "text-[#a9c1e6]" : "text-zinc-50"
           }`}
         >
           <Rendered text={step.atcText} flightVars={fv} sessionVars={sessionVars} />
@@ -77,7 +86,7 @@ export const StepRow = memo(function StepRow({
       </div>
 
       {mark && (
-        <div className="ml-[90px] shrink-0 pt-[3px] text-right text-[12px] leading-tight sm:ml-0 sm:w-[64px]">
+        <div className="ml-[120px] shrink-0 pt-[3px] text-right text-[12px] leading-tight sm:ml-0 sm:w-[64px]">
           <span className={`kicker ${STATUS_TEXT[mark.status]}`}>{mark.status}</span>{" "}
           <span className="text-zinc-500">{hhmm(mark.doneAt)}</span>
           {mark.doneBy !== step.controller && <div className="kicker text-gold">por {mark.doneBy}</div>}
@@ -106,6 +115,12 @@ const BUTTONS: Record<MarkStatus, { icon: string; label: string; on: string; off
     on: "border-ko bg-ko text-zinc-950",
     off: "border-zinc-600 text-zinc-600 hover:border-ko hover:text-ko",
   },
+  na: {
+    icon: "NA",
+    label: "No aplica",
+    on: "border-na bg-na text-zinc-950",
+    off: "border-zinc-600 text-zinc-600 hover:border-na hover:text-na",
+  },
 };
 
 function MarkButton({ kind, active, onClick }: { kind: MarkStatus; active: boolean; onClick: () => void }) {
@@ -121,7 +136,7 @@ function MarkButton({ kind, active, onClick }: { kind: MarkStatus; active: boole
       <span
         className={`tint flex h-[22px] w-[22px] items-center justify-center rounded-[2px] border text-[13px] leading-none font-bold ${
           active ? b.on : b.off
-        }`}
+        } ${kind === "na" ? "text-[9px] tracking-tight" : ""}`}
       >
         {b.icon}
       </span>
