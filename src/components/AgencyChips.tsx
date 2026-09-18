@@ -6,11 +6,13 @@ import type { AgencyStateName, Role, Vars } from "@/lib/types";
 export function AgencyChips({
   states,
   role,
+  current,
   sessionVars,
   onPress,
 }: {
   states: Map<string, AgencyStateName>;
   role: Role;
+  current?: string;
   sessionVars: Vars;
   onPress: (agency: string) => void;
 }) {
@@ -24,8 +26,9 @@ export function AgencyChips({
             key={a.id}
             type="button"
             onClick={() => onPress(a.id)}
-            title={`${agencyName(a.id)} · ${state}`}
-            className={`tint flex min-w-[84px] shrink-0 items-center gap-2 rounded-[2px] border px-2 py-1 text-left ${
+            title={`Ir a ${agencyName(a.id)} · ${state}`}
+            aria-current={current === a.id ? "true" : undefined}
+            className={`tint relative flex min-w-[84px] shrink-0 items-center gap-2 rounded-[2px] border px-2 py-1 text-left ${
               state === "abierta"
                 ? "border-gold bg-zinc-900"
                 : state === "finalizada"
@@ -34,6 +37,8 @@ export function AgencyChips({
             }`}
           >
             <StateMark state={state} />
+            {/* La agencia que está en el centro de la pantalla */}
+            {current === a.id && <span aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] bg-gold" />}
             <span className="min-w-0">
               <span
                 className={`tint block font-cond text-[15px] leading-none font-bold tracking-wide ${

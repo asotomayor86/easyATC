@@ -21,7 +21,6 @@ import {
   type Progress,
 } from "@/lib/progress";
 import {
-  AGENCY_STATES,
   ROLES,
   type AgencyStateName,
   type Flight,
@@ -34,6 +33,13 @@ import {
 } from "@/lib/types";
 
 const POLL_MS = 2500;
+
+/** scrollLeft que deja la columna `i` centrada en el carrusel. */
+function columnTarget(track: HTMLElement, i: number) {
+  const col = track.querySelector<HTMLElement>(`[data-col="${i}"]`);
+  if (!col) return null;
+  return col.offsetLeft + col.offsetWidth / 2 - track.clientWidth / 2;
+}
 
 const NEXT_STATE_VERB: Record<AgencyStateName, string> = {
   abierta: "abrirla",
@@ -83,6 +89,7 @@ export default function ControllerPage() {
   const agencyOv = useOverrides<AgencyStateName>();
   const [presence, setPresence] = useState<Record<Role, number>>({ C1: 0, C2: 0, C3: 0 });
   const [offline, setOffline] = useState(false);
+  const [synced, setSynced] = useState(false);
   const lastUpdated = useRef<string | null>(null);
   const lastContent = useRef<string | null>(null);
   const roleRef = useRef(role);
@@ -97,6 +104,7 @@ export default function ControllerPage() {
       if (roleRef.current) qs.set("role", roleRef.current);
       const st = await api<StateData>(`/api/s/${code}/state?${qs}`);
       setOffline(false);
+      setSynced(true);
 
       if (st.updatedAt !== lastUpdated.current) {
         lastUpdated.current = st.updatedAt;
@@ -194,10 +202,10 @@ export default function ControllerPage() {
     [code, poll, beginAgency, settleAgency, failAgency],
   );
 
-  const onAgencyPress = useCallback(
-    (agency: string) => {
+  const onAgencySet = useCallback(
+    (agency: string, next: AgencyStateName) => {
       const cur = agencyStates.get(agency) ?? "cerrada";
-      const next = AGENCY_STATES[(AGENCY_STATES.indexOf(cur) + 1) % AGENCY_STATES.length];
+      if (cur === next) return;
       const owner = AGENCY_LIST.find((a) => a.id === agency)?.controlador;
       if (owner === roleRef.current) return void applyAgency(agency, next);
       setConfirm({
@@ -222,20 +230,69 @@ export default function ControllerPage() {
     });
   }
 
-  // --- Saltar a una fila y resaltarla un segundo ---
-  const headerRef = useRef<HTMLElement>(null);
+  // --- Carrusel de agencias: una en el centro, las vecinas a los lados ---
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [current, setCurrent] = useState(0);
+  const currentRef = useRef(0);
+  currentRef.current = current;
+
+  const goTo = useCallback((i: number) => {
+    const track = trackRef.current;
+    const count = track?.querySelectorAll("[data-col]").length ?? 0;
+    if (!track || count === 0) return;
+    const idx = Math.max(0, Math.min(count - 1, i));
+    const left = columnTarget(track, idx);
+    if (left !== null) track.scrollTo({ left });
+    setCurrent(idx);
+  }, []);
+
+  // Al deslizar con el dedo, la agencia que queda centrada pasa a ser la actual.
+  const scrollFrame = useRef(0);
+  const onTrackScroll = useCallback(() => {
+    cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = requestAnimationFrame(() => {
+      const track = trackRef.current;
+      if (!track) return;
+      const count = track.querySelectorAll("[data-col]").length;
+      let best = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < count; i++) {
+        const d = Math.abs((columnTarget(track, i) ?? 0) - track.scrollLeft);
+        if (d < bestDist) [best, bestDist] = [i, d];
+      }
+      setCurrent(best);
+    });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest("input, textarea") || document.querySelector("[role=alertdialog]")) return;
+      if (e.key === "ArrowLeft") goTo(currentRef.current - 1);
+      if (e.key === "ArrowRight") goTo(currentRef.current + 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goTo]);
+
+  // --- Saltar a una fila: centra su agencia, baja hasta ella y la resalta un segundo ---
   const [highlight, setHighlight] = useState<string | null>(null);
   const hlTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const jumpTo = useCallback((key: string | null) => {
-    if (!key) return;
-    const el = document.querySelector<HTMLElement>(`[data-row="${key}"]`);
-    if (!el) return;
-    const offset = (headerRef.current?.offsetHeight ?? 0) + 8;
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset });
-    setHighlight(key);
-    clearTimeout(hlTimer.current);
-    hlTimer.current = setTimeout(() => setHighlight(null), 1000);
-  }, []);
+  const jumpTo = useCallback(
+    (key: string | null) => {
+      if (!key) return;
+      const el = document.querySelector<HTMLElement>(`[data-row="${key}"]`);
+      const col = el?.closest<HTMLElement>("[data-col]");
+      if (!el || !col) return;
+      goTo(Number(col.dataset.col));
+      const sticky = col.querySelector("header")?.offsetHeight ?? 0;
+      col.scrollTop += el.getBoundingClientRect().top - col.getBoundingClientRect().top - sticky - 8;
+      setHighlight(key);
+      clearTimeout(hlTimer.current);
+      hlTimer.current = setTimeout(() => setHighlight(null), 1000);
+    },
+    [goTo],
+  );
 
   // --- Derivados ---
   const rows = useMemo(() => (data ? buildRows(data.steps, data.flights) : []), [data]);
@@ -244,6 +301,16 @@ export default function ControllerPage() {
     () => Object.fromEntries(ROLES.map((r) => [r, progressForRole(r, rows, marks)])) as Record<Role, Progress>,
     [rows, marks],
   );
+
+  const centeredFor = useRef<Role | null>(null);
+  useEffect(() => {
+    if (!role || !synced || groups.length === 0 || centeredFor.current === role) return;
+    centeredFor.current = role;
+    const key = progress[role].firstPendingKey;
+    let idx = groups.findIndex((g) => g.rows.some((r) => r.key === key));
+    if (idx < 0) idx = groups.findIndex((g) => g.controller === role);
+    requestAnimationFrame(() => goTo(Math.max(0, idx)));
+  }, [role, synced, groups, progress, goTo]);
 
   if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data || !roleLoaded) return <p className="p-6 text-zinc-500">Cargando…</p>;
@@ -255,8 +322,8 @@ export default function ControllerPage() {
   const mine = progress[role];
 
   return (
-    <div className="pb-10">
-      <header ref={headerRef} className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950">
+    <div className="flex h-dvh flex-col">
+      <header className="shrink-0 border-b border-zinc-800 bg-zinc-950">
         <div className="mx-auto max-w-[96rem] px-3 pt-2 pb-2">
           {/* Barra de sesión */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -308,7 +375,13 @@ export default function ControllerPage() {
           </div>
 
           <div className="mt-2">
-            <AgencyChips states={agencyStates} role={role} sessionVars={data.session.vars} onPress={onAgencyPress} />
+            <AgencyChips
+              states={agencyStates}
+              role={role}
+              current={groups[current]?.agency}
+              sessionVars={data.session.vars}
+              onPress={(agency) => goTo(groups.findIndex((g) => g.agency === agency))}
+            />
           </div>
 
           {railsOpen && (
@@ -319,21 +392,37 @@ export default function ControllerPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[96rem] items-start gap-3 px-3 pt-3 min-[1100px]:grid-cols-2">
-        {groups.map((g) => (
-          <AgencySection
-            key={g.agency}
-            group={g}
-            mine={g.controller === role}
-            state={agencyStates.get(g.agency) ?? "cerrada"}
-            progress={progressOf(g.rows, marks, () => true)}
-            sessionVars={data.session.vars}
-            marks={marks}
-            highlight={highlight}
-            onSet={onSet}
-          />
-        ))}
-      </main>
+      <div className="flex min-h-0 flex-1">
+        <SideButton dir="prev" target={groups[current - 1]} onClick={() => goTo(current - 1)} />
+        <div
+          ref={trackRef}
+          onScroll={onTrackScroll}
+          className="relative flex min-w-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden py-3"
+        >
+          <div aria-hidden className="w-[calc(50%-min(23rem,50vw-3.5rem))] shrink-0" />
+          {groups.map((g, i) => (
+            <div
+              key={g.agency}
+              data-col={i}
+              className="h-full w-[min(46rem,calc(100vw-7rem))] shrink-0 snap-center overflow-y-auto"
+            >
+              <AgencySection
+                group={g}
+                mine={g.controller === role}
+                state={agencyStates.get(g.agency) ?? "cerrada"}
+                progress={progressOf(g.rows, marks, () => true)}
+                sessionVars={data.session.vars}
+                marks={marks}
+                highlight={highlight}
+                onSet={onSet}
+                onSetState={onAgencySet}
+              />
+            </div>
+          ))}
+          <div aria-hidden className="w-[calc(50%-min(23rem,50vw-3.5rem))] shrink-0" />
+        </div>
+        <SideButton dir="next" target={groups[current + 1]} onClick={() => goTo(current + 1)} />
+      </div>
 
       <ConfirmDialog request={confirm} onClose={closeConfirm} />
     </div>
@@ -349,6 +438,7 @@ const AgencySection = memo(function AgencySection({
   marks,
   highlight,
   onSet,
+  onSetState,
 }: {
   group: AgencyGroup;
   mine: boolean;
@@ -358,13 +448,14 @@ const AgencySection = memo(function AgencySection({
   marks: Map<string, Mark>;
   highlight: string | null;
   onSet: SetStatus;
+  onSetState: (agency: string, state: AgencyStateName) => void;
 }) {
   return (
     <section
       className={`min-w-0 rounded-[2px] border border-zinc-800 bg-zinc-900/50 ${mine ? "" : "opacity-[0.55]"}`}
     >
       <header
-        className={`flex items-center justify-between gap-3 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-2 ${
+        className={`sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-2 ${
           mine ? "border-l-gold" : "border-l-zinc-600"
         }`}
       >
@@ -377,7 +468,8 @@ const AgencySection = memo(function AgencySection({
             {agencyName(group.agency)}
           </h2>
         </div>
-        <div className="flex shrink-0 gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
           <Badge tone={mine ? "gold" : "mute"}>
             {progress.done}/{progress.total}
           </Badge>
@@ -421,6 +513,63 @@ const AgencySection = memo(function AgencySection({
     </section>
   );
 });
+
+function SideButton({
+  dir,
+  target,
+  onClick,
+}: {
+  dir: "prev" | "next";
+  target: AgencyGroup | undefined;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!target}
+      aria-label={target ? `Ir a ${agencyName(target.agency)}` : undefined}
+      className={`flex w-10 shrink-0 flex-col items-center justify-center gap-2 border-zinc-800 bg-zinc-950 text-zinc-400 hover:bg-zinc-900 hover:text-gold disabled:opacity-20 sm:w-14 ${
+        dir === "prev" ? "border-r" : "border-l"
+      }`}
+    >
+      <span className="font-cond text-[44px] leading-none font-bold">{dir === "prev" ? "‹" : "›"}</span>
+      {target && (
+        <span className="kicker text-center text-[10px]">
+          {target.agency}
+          <span className="block text-zinc-600">{target.controller}</span>
+        </span>
+      )}
+    </button>
+  );
+}
+
+const STATE_BUTTONS: { state: AgencyStateName; label: string; active: string }[] = [
+  { state: "cerrada", label: "Cerrada", active: "border-zinc-500 bg-zinc-700 text-zinc-100" },
+  { state: "abierta", label: "Abierta", active: "border-ok bg-ok text-zinc-950" },
+  { state: "finalizada", label: "Finalizada", active: "border-zinc-500 bg-zinc-800 text-zinc-300" },
+];
+
+function StateSwitch({ state, onChange }: { state: AgencyStateName; onChange: (s: AgencyStateName) => void }) {
+  return (
+    <div role="group" aria-label="Estado de la agencia" className="flex">
+      {STATE_BUTTONS.map((b, i) => (
+        <button
+          key={b.state}
+          type="button"
+          aria-pressed={state === b.state}
+          onClick={() => onChange(b.state)}
+          className={`tint kicker border px-2 py-[5px] text-[10px] ${i > 0 ? "-ml-px" : ""} ${
+            state === b.state ? `relative z-[1] ${b.active}` : "border-zinc-700 text-zinc-500 hover:text-zinc-200"
+          }`}
+        >
+          {b.state === "finalizada" && state === b.state ? "✓ " : ""}
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const BADGE_TONES = {
   gold: "border-gold/70 text-gold",
