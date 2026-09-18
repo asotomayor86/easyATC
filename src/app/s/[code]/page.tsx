@@ -236,19 +236,68 @@ export default function ControllerPage() {
   const currentRef = useRef(0);
   currentRef.current = current;
 
-  const goTo = useCallback((i: number) => {
-    const track = trackRef.current;
-    const count = track?.querySelectorAll("[data-col]").length ?? 0;
-    if (!track || count === 0) return;
-    const idx = Math.max(0, Math.min(count - 1, i));
-    const left = columnTarget(track, idx);
-    if (left !== null) track.scrollTo({ left });
-    setCurrent(idx);
+  // Desplazamiento animado: acelera un poco al principio y frena al final.
+  const slide = useRef<{ frame: number } | null>(null);
+  const stopSlide = useCallback(() => {
+    if (!slide.current) return;
+    cancelAnimationFrame(slide.current.frame);
+    slide.current = null;
+    if (trackRef.current) trackRef.current.style.scrollSnapType = "";
   }, []);
+
+  const goTo = useCallback(
+    (i: number, animate = true) => {
+      const track = trackRef.current;
+      const count = track?.querySelectorAll("[data-col]").length ?? 0;
+      if (!track || count === 0) return;
+      const idx = Math.max(0, Math.min(count - 1, i));
+      setCurrent(idx);
+      const to = columnTarget(track, idx);
+      if (to === null) return;
+      stopSlide();
+      const from = track.scrollLeft;
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!animate || reduced || Math.abs(to - from) < 2) {
+        track.scrollLeft = to;
+        return;
+      }
+      // Unos 320 ms a la vecina, algo más cuanto más lejos, con tope.
+      const steps = Math.abs(to - from) / Math.max(1, track.clientWidth / 2);
+      const duration = Math.min(650, 260 + 60 * steps);
+      const start = performance.now();
+      // Sin imán mientras dura: si no, el navegador corrige cada fotograma.
+      track.style.scrollSnapType = "none";
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = (1 - Math.cos(Math.PI * t)) / 2; // seno: entrada y salida suaves
+        track.scrollLeft = from + (to - from) * eased;
+        if (t < 1) slide.current = { frame: requestAnimationFrame(tick) };
+        else stopSlide();
+      };
+      slide.current = { frame: requestAnimationFrame(tick) };
+    },
+    [stopSlide],
+  );
+
+  // Si el usuario toca o usa la rueda a mitad de animación, manda su gesto.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const cancel = () => stopSlide();
+    track.addEventListener("wheel", cancel, { passive: true });
+    track.addEventListener("touchstart", cancel, { passive: true });
+    track.addEventListener("pointerdown", cancel);
+    return () => {
+      track.removeEventListener("wheel", cancel);
+      track.removeEventListener("touchstart", cancel);
+      track.removeEventListener("pointerdown", cancel);
+    };
+  });
 
   // Al deslizar con el dedo, la agencia que queda centrada pasa a ser la actual.
   const scrollFrame = useRef(0);
   const onTrackScroll = useCallback(() => {
+    if (slide.current) return; // durante la animación, la actual ya está fijada
     cancelAnimationFrame(scrollFrame.current);
     scrollFrame.current = requestAnimationFrame(() => {
       const track = trackRef.current;
@@ -309,7 +358,7 @@ export default function ControllerPage() {
     const key = progress[role].firstPendingKey;
     let idx = groups.findIndex((g) => g.rows.some((r) => r.key === key));
     if (idx < 0) idx = groups.findIndex((g) => g.controller === role);
-    requestAnimationFrame(() => goTo(Math.max(0, idx)));
+    requestAnimationFrame(() => goTo(Math.max(0, idx), false));
   }, [role, synced, groups, progress, goTo]);
 
   if (error) return <p className="p-6 text-ko">{error}</p>;
