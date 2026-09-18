@@ -37,3 +37,19 @@ export async function PATCH(req: Request, { params }: Ctx) {
   await db.update(sessions).set({ contentAt: sql`now()` }).where(eq(sessions.id, session.id));
   return json({ ok: true });
 }
+
+/** Quita la comunicación (y sus marcas). */
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const { code, id } = await params;
+  if (!UUID_RE.test(id)) return json({ error: "Paso no encontrado" }, 404);
+  const session = await findSession(code);
+  if (!session) return notFound();
+  const db = getDb();
+  const [deleted] = await db
+    .delete(steps)
+    .where(and(eq(steps.id, id), eq(steps.sessionId, session.id)))
+    .returning({ id: steps.id });
+  if (!deleted) return json({ error: "Paso no encontrado" }, 404);
+  await db.update(sessions).set({ contentAt: sql`now()` }).where(eq(sessions.id, session.id));
+  return json({ ok: true });
+}

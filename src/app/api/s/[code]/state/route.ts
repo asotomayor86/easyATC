@@ -30,6 +30,7 @@ export async function GET(req: Request, { params }: Ctx) {
     id: string;
     updated_at: string;
     content_at: string;
+    started_at: string | null;
     presence: Record<string, { role: string; at: string }>;
   }>(sql`
     UPDATE sessions SET presence = (
@@ -38,7 +39,7 @@ export async function GET(req: Request, { params }: Ctx) {
       WHERE (e.v->>'at')::timestamptz > now() - interval '${sql.raw(PRESENCE_TTL)}'
     )
     WHERE code = ${upper}
-    RETURNING id, updated_at, content_at, presence
+    RETURNING id, updated_at, content_at, started_at, presence
   `);
   const s = result.rows[0];
   if (!s) return notFound();
@@ -73,6 +74,7 @@ export async function GET(req: Request, { params }: Ctx) {
   return json({
     updatedAt: new Date(s.updated_at).toISOString(),
     contentAt: new Date(s.content_at).toISOString(),
+    startedAt: s.started_at ? new Date(s.started_at).toISOString() : null,
     marks: markRows,
     agencies: agencyRows,
     presence,

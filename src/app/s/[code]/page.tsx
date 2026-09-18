@@ -8,7 +8,8 @@ import { AgencyChips } from "@/components/AgencyChips";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { Rails } from "@/components/Rails";
 import { StatusCounts } from "@/components/StatusCounts";
-import { StepRow, type SetStatus } from "@/components/StepRow";
+import { StepRow, wallTime, type SetStatus } from "@/components/StepRow";
+import { missionTime, parseClock } from "@/lib/mission";
 import { api, clientId, useSessionData } from "@/lib/client";
 import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
 import { overlay, useOverrides } from "@/lib/optimistic";
@@ -93,6 +94,7 @@ export default function ControllerPage() {
   const [presence, setPresence] = useState<Record<Role, number>>({ C1: 0, C2: 0, C3: 0 });
   const [offline, setOffline] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
   const lastUpdated = useRef<string | null>(null);
   const lastContent = useRef<string | null>(null);
   const roleRef = useRef(role);
@@ -113,6 +115,7 @@ export default function ControllerPage() {
         lastUpdated.current = st.updatedAt;
         setServerMarks(new Map(st.marks.map((m) => [rowKey(m.stepId, m.flightId), m])));
         setServerAgencies(new Map(st.agencies.map((a) => [a.agency, a.state])));
+        setStartedAt(st.startedAt);
       }
       if (lastContent.current && st.contentAt !== lastContent.current) reload();
       lastContent.current = st.contentAt;
@@ -232,6 +235,20 @@ export default function ControllerPage() {
       },
     });
   }
+
+  // --- Inicio de misión: coincide con quitar la pausa en DCS ---
+  const startMission = () =>
+    setConfirm({
+      message: startedAt
+        ? "La misión ya está en marcha. ¿Reiniciar el reloj a este instante? Las horas de las marcas se recalculan."
+        : "¿Iniciar la misión ahora? Púlsalo justo al quitar la pausa en DCS.",
+      confirmLabel: startedAt ? "Reiniciar" : "Iniciar",
+      onConfirm: async () => {
+        const r = await api<{ startedAt: string }>(`/api/s/${code}/start`, "POST");
+        setStartedAt(r.startedAt);
+        poll();
+      },
+    });
 
   // --- Carrusel de agencias: una en el centro, las vecinas a los lados ---
   const trackRef = useRef<HTMLDivElement>(null);
@@ -413,6 +430,16 @@ export default function ControllerPage() {
     requestAnimationFrame(() => goTo(Math.max(0, idx), false));
   }, [role, synced, groups, progress, goTo]);
 
+  const missionBase = parseClock(data?.session.vars.inicio_mision);
+  const formatTime = useMemo(() => {
+    if (!startedAt) return wallTime;
+    const t0 = new Date(startedAt).getTime();
+    return (iso: string) => {
+      const t = new Date(iso).getTime();
+      return t < t0 ? wallTime(iso) : missionTime(t, t0, missionBase);
+    };
+  }, [startedAt, missionBase]);
+
   if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data || !roleLoaded) return <p className="p-6 text-zinc-500">Cargando…</p>;
 
@@ -466,9 +493,7 @@ export default function ControllerPage() {
             </div>
 
             <div className="flex items-center gap-1.5">
-              <HeaderButton onClick={() => jumpTo(mine.firstPendingKey)} disabled={!mine.firstPendingKey}>
-                Siguiente ↓
-              </HeaderButton>
+              <MissionButton startedAt={startedAt} base={missionBase} onClick={startMission} />
               <HeaderButton onClick={reset} tone="ko">
                 Reset
               </HeaderButton>
@@ -512,7 +537,7 @@ export default function ControllerPage() {
                 group={g}
                 mine={g.controller === role}
                 state={agencyStates.get(g.agency) ?? "cerrada"}
-                progress={progressOf(g.rows, marks, () => true)}
+                formatTime={formatTime}
                 sessionVars={data.session.vars}
                 marks={marks}
                 highlight={highlight}
@@ -538,7 +563,7 @@ const AgencySection = memo(function AgencySection({
   group,
   mine,
   state,
-  progress,
+  formatTime,
   sessionVars,
   marks,
   highlight,
@@ -551,7 +576,7 @@ const AgencySection = memo(function AgencySection({
   group: AgencyGroup;
   mine: boolean;
   state: AgencyStateName;
-  progress: Progress;
+  formatTime: (iso: string) => string;
   sessionVars: Vars;
   marks: Map<string, Mark>;
   highlight: string | null;
@@ -589,12 +614,6 @@ const AgencySection = memo(function AgencySection({
             −
           </FoldButton>
           <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
-          <Badge tone={mine ? "gold" : "mute"}>
-            {progress.done}/{progress.total}
-          </Badge>
-          {progress.warn > 0 && <Badge tone="warn">{progress.warn} WARN</Badge>}
-          {progress.ko > 0 && <Badge tone="ko">{progress.ko} KO</Badge>}
-          {progress.na > 0 && <Badge tone="na">{progress.na} NA</Badge>}
         </div>
       </header>
 
@@ -648,6 +667,7 @@ const AgencySection = memo(function AgencySection({
                           highlighted={highlight === r.key}
                           onSet={onSet}
                           showCallsign={false}
+                          formatTime={formatTime}
                         />
                       </article>
                     );
@@ -688,6 +708,48 @@ function SideButton({
           <span className="block text-zinc-600">{target.controller}</span>
         </span>
       )}
+    </button>
+  );
+}
+
+/** Antes de empezar: botón Inicio. Después: el reloj de misión en marcha. */
+function MissionButton({
+  startedAt,
+  base,
+  onClick,
+}: {
+  startedAt: string | null;
+  base: number | null;
+  onClick: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!startedAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  if (!startedAt)
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="kicker rounded-[2px] border border-ok bg-ok px-3 py-[7px] text-[11px] text-zinc-950 hover:bg-ok/85"
+      >
+        ▶ Inicio
+      </button>
+    );
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={base === null ? "Define la variable inicio_mision para ver la hora de misión" : "Reiniciar el reloj de misión"}
+      className="flex items-baseline gap-1.5 rounded-[2px] border border-ok/60 px-2.5 py-[5px] hover:border-ok"
+    >
+      <span className="kicker text-[10px] text-ok">Misión</span>
+      <span className="text-[14px] font-semibold text-zinc-50">
+        {missionTime(now, new Date(startedAt).getTime(), base)}
+      </span>
     </button>
   );
 }

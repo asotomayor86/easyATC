@@ -1,4 +1,4 @@
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { getDb } from "@/db";
 import { sessions, flights, steps } from "@/db/schema";
 import { GUION } from "./guion";
@@ -60,20 +60,16 @@ export async function createSession(db: DB, name: string, fixedCode?: string): P
 }
 
 /**
- * Deja la sesión al día con guion.json: la crea si no existe y la vuelve a
- * sembrar si su número de pasos no coincide. Devuelve lo que ha hecho.
+ * Crea la sesión si no existe. Si ya existe no la toca: el guion de una
+ * sesión se edita desde la app (textos, pasos añadidos o quitados), y volver a
+ * sembrarla borraría esos cambios y sus marcas. Para recargar DEMO01 desde
+ * guion.json está `npm run db:seed`.
  */
-export async function ensureSession(db: DB, code: string, name: string): Promise<"creada" | "resembrada" | "sin cambios"> {
-  const [existing] = await db
-    .select({ id: sessions.id, steps: count(steps.id) })
-    .from(sessions)
-    .leftJoin(steps, eq(steps.sessionId, sessions.id))
-    .where(eq(sessions.code, code))
-    .groupBy(sessions.id);
-  if (existing && existing.steps === GUION.pasos.length) return "sin cambios";
-  if (existing) await deleteSessionByCode(db, code);
+export async function ensureSession(db: DB, code: string, name: string): Promise<"creada" | "ya existía"> {
+  const [existing] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.code, code)).limit(1);
+  if (existing) return "ya existía";
   await createSession(db, name, code);
-  return existing ? "resembrada" : "creada";
+  return "creada";
 }
 
 export async function deleteSessionByCode(db: DB, code: string) {

@@ -15,6 +15,13 @@
       "when": 1789757303669,
       "tag": "0001_estados",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789771444005,
+      "tag": "0002_inicio",
+      "breakpoints": true
     }
   ]
 }

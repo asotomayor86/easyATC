@@ -64,6 +64,7 @@ export interface SessionData {
 export interface StateData {
   updatedAt: string;
   contentAt: string;
+  startedAt: string | null;
   marks: Mark[];
   agencies: AgencyState[];
   presence: Record<Role, number>;

@@ -8,7 +8,8 @@ const STATUS_TEXT: Record<MarkStatus, string> = { ok: "text-ok", warn: "text-war
 
 const EMPTY: Vars = {};
 
-function hhmm(iso: string) {
+/** Hora del reloj del ordenador, cuando la misión aún no ha empezado. */
+export function wallTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -23,6 +24,7 @@ export const StepRow = memo(function StepRow({
   highlighted,
   onSet,
   showCallsign = true,
+  formatTime = wallTime,
 }: {
   rowKey: string;
   step: Step;
@@ -33,6 +35,8 @@ export const StepRow = memo(function StepRow({
   onSet: SetStatus;
   /** Dentro de un grupo de vuelo el indicativo ya está en la cabecera del grupo. */
   showCallsign?: boolean;
+  /** Hora de misión de la marca, una vez pulsado Inicio. */
+  formatTime?: (iso: string) => string;
 }) {
   const status = mark?.status ?? null;
   const fv = flight?.vars ?? EMPTY;
@@ -86,9 +90,9 @@ export const StepRow = memo(function StepRow({
       </div>
 
       {mark && (
-        <div className="ml-[120px] shrink-0 pt-[3px] text-right text-[12px] leading-tight sm:ml-0 sm:w-[64px]">
+        <div className="ml-[120px] shrink-0 pt-[3px] text-right text-[12px] leading-tight sm:ml-0 sm:w-[82px]">
           <span className={`kicker ${STATUS_TEXT[mark.status]}`}>{mark.status}</span>{" "}
-          <span className="text-zinc-500">{hhmm(mark.doneAt)}</span>
+          <span className="text-zinc-500">{formatTime(mark.doneAt)}</span>
           {mark.doneBy !== step.controller && <div className="kicker text-gold">por {mark.doneBy}</div>}
         </div>
       )}

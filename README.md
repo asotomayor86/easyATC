@@ -85,6 +85,8 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   de cada campo.
 - **`/s/CODIGO/guion`** — textos de las transmisiones. Son plantillas: un
   cambio se aplica a los cuatro vuelos de esa sesión, y solo a esa sesión.
+  Cada comunicación tiene «+ Añadir debajo» (crea una nueva con la misma
+  agencia, controlador y hora, y textos vacíos) y «Quitar».
 - **`/s/CODIGO`** — vista del controlador. Elige C1, C2 o C3; el rol se
   recuerda en ese navegador y se cambia pulsando el rol en la cabecera.
   Las nueve agencias van una al lado de otra: la de trabajo en el centro y
@@ -98,6 +100,11 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
     o no aplica (NA); pulsar el botón activo la devuelve a pendiente. Tocar algo de otro controlador pide
     confirmación.
   - Cada agencia se abre, cierra o finaliza desde su propia cabecera.
+  - **Inicio**: se pulsa justo al quitar la pausa en DCS. A partir de ahí el
+    botón muestra el reloj de misión y cada marca guarda su hora de misión.
+    La hora de partida es la variable global `inicio_mision` (por ejemplo
+    `09:00`); sin ella se muestra el tiempo transcurrido (T+00:12:34). El
+    reset borra también la hora de inicio.
   - Los rieles (uno por vuelo) resumen toda la misión; pulsar un punto lleva
     a esa transmisión. Se pliegan desde el menú ⋯.
 

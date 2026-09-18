@@ -1,7 +1,6 @@
 // Se ejecuta en cada build de Vercel (script `vercel-build`): aplica las
-// migraciones pendientes y deja DEMO01 al día con guion.json: la crea si no
-// existe y la vuelve a sembrar si cambia el número de pasos. Las demás
-// sesiones no se tocan.
+// migraciones pendientes y crea DEMO01 si no existe. No toca ninguna sesión
+// que ya exista (para recargar DEMO01 desde guion.json: npm run db:seed).
 import { getDb } from "../src/db";
 import { ensureSession } from "../src/lib/seed";
 import { runMigrations } from "./migrate";

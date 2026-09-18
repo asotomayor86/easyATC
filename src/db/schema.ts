@@ -19,6 +19,8 @@ export const sessions = pgTable("sessions", {
   vars: jsonb("vars").$type<Vars>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   resetAt: timestamp("reset_at", { withTimezone: true }),
+  // Instante real en que se quitó la pausa de la misión (botón Inicio).
+  startedAt: timestamp("started_at", { withTimezone: true }),
   // Cambia con cada marca o reset: lo usa el sondeo para saber si hay novedades.
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   // Cambia al editar variables o textos: el cliente recarga el guion.
