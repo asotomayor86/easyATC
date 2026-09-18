@@ -59,6 +59,14 @@ export async function createSession(db: DB, name: string, fixedCode?: string): P
   return row.code;
 }
 
+/** Crea la sesión si no existe; si existe, no la toca. */
+export async function ensureSession(db: DB, code: string, name: string): Promise<boolean> {
+  const [existing] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.code, code)).limit(1);
+  if (existing) return false;
+  await createSession(db, name, code);
+  return true;
+}
+
 export async function deleteSessionByCode(db: DB, code: string) {
   await db.delete(sessions).where(eq(sessions.code, code));
 }
