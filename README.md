@@ -73,7 +73,10 @@ Si prefieres la web: importa el repositorio en Vercel, añade la variable
 `DATABASE_URL` en **Settings → Environment Variables** y despliega. No hace
 falta ninguna otra variable.
 
-La base ya está migrada desde el paso 3; Vercel no ejecuta migraciones.
+Cada build de Vercel ejecuta el script `vercel-build`, que aplica las
+migraciones pendientes y crea DEMO01 si no existe (no borra nada). Por eso
+también funciona con la integración de Neon de Vercel, cuyas variables no se
+pueden descargar en local: el paso 3 es opcional en ese caso.
 
 ## Uso
 
