@@ -6,6 +6,9 @@ export interface ConfirmRequest {
   message: string;
   confirmLabel: string;
   onConfirm: () => void;
+  /** Segunda opción, entre Cancelar y la principal. */
+  secondary?: { label: string; onConfirm: () => void };
+  title?: string;
 }
 
 export function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; onClose: () => void }) {
@@ -35,7 +38,7 @@ export function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | 
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm rounded-[2px] border border-zinc-700 border-l-4 border-l-gold bg-zinc-900 p-4"
       >
-        <p className="kicker mb-2 text-gold">Confirmar</p>
+        <p className="kicker mb-2 text-gold">{request.title ?? "Confirmar"}</p>
         <p id="confirm-msg" className="mb-4 text-[14px] text-zinc-100">
           {request.message}
         </p>
@@ -47,6 +50,18 @@ export function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | 
           >
             Cancelar
           </button>
+          {request.secondary && (
+            <button
+              type="button"
+              onClick={() => {
+                request.secondary!.onConfirm();
+                onClose();
+              }}
+              className="kicker rounded-[2px] border border-ko/60 px-3 py-2 text-[12px] text-ko hover:border-ko"
+            >
+              {request.secondary.label}
+            </button>
+          )}
           <button
             ref={confirmRef}
             type="button"

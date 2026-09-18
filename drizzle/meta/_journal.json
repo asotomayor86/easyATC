@@ -29,6 +29,13 @@
       "when": 1789773745166,
       "tag": "0003_checklist",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789773966364,
+      "tag": "0004_pausas",
+      "breakpoints": true
     }
   ]
 }

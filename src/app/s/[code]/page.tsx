@@ -9,7 +9,7 @@ import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { Rails } from "@/components/Rails";
 import { StatusCounts } from "@/components/StatusCounts";
 import { StepRow, wallTime, type SetStatus } from "@/components/StepRow";
-import { missionTime, parseClock } from "@/lib/mission";
+import { isPaused, missionTime, parseClock, type Pause } from "@/lib/mission";
 import { api, clientId, useSessionData } from "@/lib/client";
 import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
 import { overlay, useOverrides } from "@/lib/optimistic";
@@ -95,6 +95,7 @@ export default function ControllerPage() {
   const [offline, setOffline] = useState(false);
   const [synced, setSynced] = useState(false);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [pauses, setPauses] = useState<Pause[]>([]);
   const lastUpdated = useRef<string | null>(null);
   const lastContent = useRef<string | null>(null);
   const roleRef = useRef(role);
@@ -116,6 +117,7 @@ export default function ControllerPage() {
         setServerMarks(new Map(st.marks.map((m) => [rowKey(m.stepId, m.flightId), m])));
         setServerAgencies(new Map(st.agencies.map((a) => [a.agency, a.state])));
         setStartedAt(st.startedAt);
+        setPauses(st.pauses ?? []);
       }
       if (lastContent.current && st.contentAt !== lastContent.current) reload();
       lastContent.current = st.contentAt;
@@ -237,18 +239,35 @@ export default function ControllerPage() {
   }
 
   // --- Inicio de misión: coincide con quitar la pausa en DCS ---
-  const startMission = () =>
+  const restart = async () => {
+    const r = await api<{ startedAt: string }>(`/api/s/${code}/start`, "POST");
+    setStartedAt(r.startedAt);
+    setPauses([]);
+    poll();
+  };
+  const pauseOrResume = async (action: "pause" | "resume") => {
+    const r = await api<{ pauses: Pause[] }>(`/api/s/${code}/pause`, "POST", { action });
+    setPauses(r.pauses);
+    poll();
+  };
+  const startMission = () => {
+    if (!startedAt)
+      return setConfirm({
+        message: "¿Iniciar la misión ahora? Púlsalo justo al quitar la pausa en DCS.",
+        confirmLabel: "Iniciar",
+        onConfirm: restart,
+      });
+    const paused = isPaused(pauses);
     setConfirm({
-      message: startedAt
-        ? "La misión ya está en marcha. ¿Reiniciar el reloj a este instante? Las horas de las marcas se recalculan."
-        : "¿Iniciar la misión ahora? Púlsalo justo al quitar la pausa en DCS.",
-      confirmLabel: startedAt ? "Reiniciar" : "Iniciar",
-      onConfirm: async () => {
-        const r = await api<{ startedAt: string }>(`/api/s/${code}/start`, "POST");
-        setStartedAt(r.startedAt);
-        poll();
-      },
+      title: paused ? "Misión en pausa" : "Misión en marcha",
+      message: paused
+        ? "Reanudar continúa el reloj desde donde se paró: púlsalo al quitar la pausa en DCS. Reiniciar lo pone a cero en este instante y recalcula las horas de las marcas."
+        : "Pausar congela el reloj de misión: púlsalo al pausar DCS. Reiniciar lo pone a cero en este instante y recalcula las horas de las marcas.",
+      confirmLabel: paused ? "Reanudar" : "Pausar",
+      onConfirm: () => pauseOrResume(paused ? "resume" : "pause"),
+      secondary: { label: "Reiniciar", onConfirm: restart },
     });
+  };
 
   // --- Carrusel de agencias: una en el centro, las vecinas a los lados ---
   const trackRef = useRef<HTMLDivElement>(null);
@@ -458,9 +477,9 @@ export default function ControllerPage() {
     const t0 = new Date(startedAt).getTime();
     return (iso: string) => {
       const t = new Date(iso).getTime();
-      return t < t0 ? wallTime(iso) : missionTime(t, t0, missionBase);
+      return t < t0 ? wallTime(iso) : missionTime(t, t0, missionBase, pauses);
     };
-  }, [startedAt, missionBase]);
+  }, [startedAt, missionBase, pauses]);
 
   if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data || !roleLoaded) return <p className="p-6 text-zinc-500">Cargando…</p>;
@@ -515,7 +534,7 @@ export default function ControllerPage() {
             </div>
 
             <div className="flex items-center gap-1.5">
-              <MissionButton startedAt={startedAt} base={missionBase} onClick={startMission} />
+              <MissionButton startedAt={startedAt} pauses={pauses} base={missionBase} onClick={startMission} />
               <HeaderButton onClick={reset} tone="ko">
                 Reset
               </HeaderButton>
@@ -680,11 +699,10 @@ const AgencySection = memo(function AgencySection({
                         key={r.key}
                         className={`border-l-2 ${coord ? "border-l-coord" : step.alt ? "border-l-alt" : "border-l-transparent"}`}
                       >
-                        {(step.alt || coord || (step.note && !checklistOnly) || !step.counts) && (
+                        {(step.alt || coord || (step.note && !checklistOnly)) && (
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pt-1.5 text-[12px]">
                             {step.alt && <Badge tone="alt">Alternativa</Badge>}
                             {coord && <Badge tone="coord">Coordinación</Badge>}
-                            {!step.counts && <Badge tone="mute">No cuenta</Badge>}
                             {step.note && !checklistOnly && <span className="text-zinc-400">{step.note}</span>}
                           </div>
                         )}
@@ -746,10 +764,12 @@ function SideButton({
 /** Antes de empezar: botón Inicio. Después: el reloj de misión en marcha. */
 function MissionButton({
   startedAt,
+  pauses,
   base,
   onClick,
 }: {
   startedAt: string | null;
+  pauses: Pause[];
   base: number | null;
   onClick: () => void;
 }) {
@@ -770,16 +790,19 @@ function MissionButton({
         ▶ Inicio
       </button>
     );
+  const paused = isPaused(pauses);
   return (
     <button
       type="button"
       onClick={onClick}
-      title={base === null ? "Define la variable inicio_mision para ver la hora de misión" : "Reiniciar el reloj de misión"}
-      className="flex items-baseline gap-1.5 rounded-[2px] border border-ok/60 px-2.5 py-[5px] hover:border-ok"
+      title={base === null ? "Define la variable inicio_mision para ver la hora de misión" : "Pausar, reanudar o reiniciar el reloj"}
+      className={`flex items-baseline gap-1.5 rounded-[2px] border px-2.5 py-[5px] ${
+        paused ? "border-warn bg-warn/10 hover:bg-warn/20" : "border-ok/60 hover:border-ok"
+      }`}
     >
-      <span className="kicker text-[10px] text-ok">Misión</span>
-      <span className="text-[14px] font-semibold text-zinc-50">
-        {missionTime(now, new Date(startedAt).getTime(), base)}
+      <span className={`kicker text-[10px] ${paused ? "text-warn" : "text-ok"}`}>{paused ? "❚❚ Pausa" : "Misión"}</span>
+      <span className={`text-[14px] font-semibold ${paused ? "text-warn" : "text-zinc-50"}`}>
+        {missionTime(now, new Date(startedAt).getTime(), base, pauses)}
       </span>
     </button>
   );

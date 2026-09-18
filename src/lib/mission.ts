@@ -19,12 +19,31 @@ function hms(total: number) {
   return `${pad(Math.floor(t / 3600))}:${pad(Math.floor((t % 3600) / 60))}:${pad(t % 60)}`;
 }
 
+export interface Pause {
+  from: string;
+  to: string | null;
+}
+
+export const isPaused = (pauses: Pause[]) => pauses.length > 0 && pauses[pauses.length - 1].to === null;
+
+/** Milisegundos en pausa entre el inicio y el instante `at` (solo las pausas anteriores cuentan). */
+function pausedMs(pauses: Pause[], startedAt: number, at: number) {
+  let total = 0;
+  for (const p of pauses) {
+    const from = Math.max(new Date(p.from).getTime(), startedAt);
+    const to = Math.min(p.to ? new Date(p.to).getTime() : at, at);
+    if (to > from) total += to - from;
+  }
+  return total;
+}
+
 /**
- * Hora de misión de un instante real. Sin `inicio_mision` devuelve el tiempo
+ * Hora de misión de un instante real: la hora de partida más el tiempo en
+ * marcha, sin contar las pausas. Sin `inicio_mision` devuelve el tiempo
  * transcurrido («T+00:12:34»).
  */
-export function missionTime(at: number, startedAt: number, base: number | null): string {
-  const elapsed = (at - startedAt) / 1000;
+export function missionTime(at: number, startedAt: number, base: number | null, pauses: Pause[] = []): string {
+  const elapsed = (at - startedAt - pausedMs(pauses, startedAt, at)) / 1000;
   if (base === null) return `T+${hms(elapsed)}`;
   return hms((base + elapsed) % 86400);
 }

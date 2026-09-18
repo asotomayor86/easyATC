@@ -89,7 +89,7 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   agencia, controlador y hora, y textos vacíos) y «Quitar».
   Cada una tiene además un nombre resumen para la checklist y la casilla
   «Cuenta para rieles y estadísticas»: si se desmarca, desaparece de los
-  rieles y de todos los recuentos.
+  rieles y de todos los recuentos (sigue en su agencia y se puede marcar).
 - **Exportar / Importar JSON** (en Guion y en Variables) — descarga o carga la
   misión completa (variables, vuelos y guion) en el formato de `guion.json`,
   con los campos `checklist` y `cuenta` en cada paso.
@@ -113,8 +113,10 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   - **Inicio**: se pulsa justo al quitar la pausa en DCS. A partir de ahí el
     botón muestra el reloj de misión y cada marca guarda su hora de misión.
     La hora de partida es la variable global `inicio_mision` (por ejemplo
-    `09:00`); sin ella se muestra el tiempo transcurrido (T+00:12:34). El
-    reset borra también la hora de inicio.
+    `09:00`); sin ella se muestra el tiempo transcurrido (T+00:12:34).
+    Pulsando el reloj en marcha se puede **pausar** (el reloj se congela,
+    en ámbar), **reanudar** o **reiniciar**. Las pausas no cuentan en las
+    horas de misión. El reset borra también la hora de inicio y las pausas.
   - Los rieles (uno por vuelo) resumen toda la misión; pulsar un punto lleva
     a esa transmisión. Se pliegan desde el menú ⋯.
 

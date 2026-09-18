@@ -17,7 +17,7 @@ export async function POST(_req: Request, { params }: Ctx) {
     db.delete(agencyStates).where(eq(agencyStates.sessionId, session.id)),
     db
       .update(sessions)
-      .set({ resetAt: sql`now()`, updatedAt: sql`now()`, startedAt: null })
+      .set({ resetAt: sql`now()`, updatedAt: sql`now()`, startedAt: null, pauses: [] })
       .where(eq(sessions.id, session.id)),
   ]);
   return json({ ok: true });

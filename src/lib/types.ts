@@ -64,10 +64,16 @@ export interface SessionData {
   steps: Step[];
 }
 
+export interface Pause {
+  from: string;
+  to: string | null;
+}
+
 export interface StateData {
   updatedAt: string;
   contentAt: string;
   startedAt: string | null;
+  pauses: Pause[];
   marks: Mark[];
   agencies: AgencyState[];
   presence: Record<Role, number>;
