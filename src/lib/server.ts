@@ -27,6 +27,16 @@ export async function findSession(code: string) {
   return row ?? null;
 }
 
+/**
+ * Instante en que el usuario pulsó (ISO, ya corregido con la hora del
+ * servidor en el cliente). Si falta o se aleja más de 2 minutos de la hora
+ * del servidor, se usa la del servidor.
+ */
+export function clickTime(v: unknown): Date {
+  const t = typeof v === "string" ? Date.parse(v) : NaN;
+  return Number.isFinite(t) && Math.abs(t - Date.now()) <= 120_000 ? new Date(t) : new Date();
+}
+
 /** Deja solo pares clave → texto, con claves razonables. */
 export function cleanVars(input: unknown): Record<string, string> | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;

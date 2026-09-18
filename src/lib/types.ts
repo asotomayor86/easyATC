@@ -74,6 +74,7 @@ export interface StateData {
   contentAt: string;
   startedAt: string | null;
   pauses: Pause[];
+  serverNow: string;
   marks: Mark[];
   agencies: AgencyState[];
   presence: Record<Role, number>;

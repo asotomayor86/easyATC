@@ -96,6 +96,14 @@ export default function ControllerPage() {
   const [synced, setSynced] = useState(false);
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [pauses, setPauses] = useState<Pause[]>([]);
+  // Desfase del reloj de esta pantalla respecto al servidor (ms). Se toma la
+  // medida con menor tiempo de ida y vuelta, que es la más fiable.
+  const [clockOffset, setClockOffset] = useState(0);
+  const offsetSample = useRef<{ offset: number; rtt: number; at: number } | null>(null);
+  const offsetRef = useRef(0);
+  offsetRef.current = clockOffset;
+  /** «Ahora» con la hora del servidor. */
+  const serverNow = useCallback(() => Date.now() + offsetRef.current, []);
   const lastUpdated = useRef<string | null>(null);
   const lastContent = useRef<string | null>(null);
   const roleRef = useRef(role);
@@ -109,6 +117,17 @@ export default function ControllerPage() {
       const qs = new URLSearchParams({ cid: clientId() });
       if (roleRef.current) qs.set("role", roleRef.current);
       const st = await api<StateData>(`/api/s/${code}/state?${qs}`);
+      const received = Date.now();
+      if (st.serverNow) {
+        const rtt = received - started;
+        const offset = new Date(st.serverNow).getTime() - (started + received) / 2;
+        const best = offsetSample.current;
+        // Nueva referencia si es más precisa o si la anterior tiene más de 5 minutos.
+        if (!best || rtt <= best.rtt || received - best.at > 300_000) {
+          offsetSample.current = { offset, rtt, at: received };
+          setClockOffset((o) => (Math.abs(o - offset) > 50 ? offset : o));
+        }
+      }
       setOffline(false);
       setSynced(true);
 
@@ -164,11 +183,11 @@ export default function ControllerPage() {
       const r = roleRef.current ?? "C1";
       const k = rowKey(step.id, flight?.id ?? null);
       const mark: Mark | null = status
-        ? { stepId: step.id, flightId: flight?.id ?? null, status, doneAt: new Date().toISOString(), doneBy: r }
+        ? { stepId: step.id, flightId: flight?.id ?? null, status, doneAt: new Date(serverNow()).toISOString(), doneBy: r }
         : null;
       const entry = beginMark(k, mark);
       try {
-        await api(`/api/s/${code}/marks`, "PATCH", { stepId: step.id, flightId: flight?.id ?? null, status, role: r });
+        await api(`/api/s/${code}/marks`, "PATCH", { stepId: step.id, flightId: flight?.id ?? null, status, role: r, at: mark?.doneAt });
         settleMark(k, entry);
         poll();
       } catch {
@@ -176,7 +195,7 @@ export default function ControllerPage() {
         setOffline(true);
       }
     },
-    [code, poll, beginMark, settleMark, failMark],
+    [code, poll, beginMark, settleMark, failMark, serverNow],
   );
 
   const onSet: SetStatus = useCallback(
@@ -240,13 +259,18 @@ export default function ControllerPage() {
 
   // --- Inicio de misión: coincide con quitar la pausa en DCS ---
   const restart = async () => {
-    const r = await api<{ startedAt: string }>(`/api/s/${code}/start`, "POST");
+    const r = await api<{ startedAt: string }>(`/api/s/${code}/start`, "POST", {
+      at: new Date(serverNow()).toISOString(),
+    });
     setStartedAt(r.startedAt);
     setPauses([]);
     poll();
   };
   const pauseOrResume = async (action: "pause" | "resume") => {
-    const r = await api<{ pauses: Pause[] }>(`/api/s/${code}/pause`, "POST", { action });
+    const r = await api<{ pauses: Pause[] }>(`/api/s/${code}/pause`, "POST", {
+      action,
+      at: new Date(serverNow()).toISOString(),
+    });
     setPauses(r.pauses);
     poll();
   };
@@ -534,7 +558,13 @@ export default function ControllerPage() {
             </div>
 
             <div className="flex items-center gap-1.5">
-              <MissionButton startedAt={startedAt} pauses={pauses} base={missionBase} onClick={startMission} />
+              <MissionButton
+                startedAt={startedAt}
+                pauses={pauses}
+                base={missionBase}
+                offset={clockOffset}
+                onClick={startMission}
+              />
               <HeaderButton onClick={reset} tone="ko">
                 Reset
               </HeaderButton>
@@ -766,19 +796,23 @@ function MissionButton({
   startedAt,
   pauses,
   base,
+  offset,
   onClick,
 }: {
   startedAt: string | null;
   pauses: Pause[];
   base: number | null;
+  /** Desfase respecto al servidor, para que el reloj no dependa de la hora del ordenador. */
+  offset: number;
   onClick: () => void;
 }) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now() + offset);
   useEffect(() => {
     if (!startedAt) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    // Cada 250 ms para que el segundo cambie a tiempo, sin saltos.
+    const id = setInterval(() => setNow(Date.now() + offset), 250);
     return () => clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, offset]);
 
   if (!startedAt)
     return (

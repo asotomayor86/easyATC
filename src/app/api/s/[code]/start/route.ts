@@ -1,18 +1,19 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { sessions } from "@/db/schema";
-import { json, notFound } from "@/lib/server";
+import { clickTime, json, notFound } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ code: string }> };
 
 /** Marca ahora como el momento en que se quita la pausa de la misión (y borra las pausas). */
-export async function POST(_req: Request, { params }: Ctx) {
+export async function POST(req: Request, { params }: Ctx) {
   const { code } = await params;
+  const body = await req.json().catch(() => null);
   const [row] = await getDb()
     .update(sessions)
-    .set({ startedAt: sql`now()`, pauses: [], updatedAt: sql`now()` })
+    .set({ startedAt: clickTime(body?.at), pauses: [], updatedAt: sql`now()` })
     .where(eq(sessions.code, code.toUpperCase()))
     .returning({ startedAt: sessions.startedAt });
   if (!row) return notFound();

@@ -1,14 +1,14 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { badRequest, json, notFound } from "@/lib/server";
+import { badRequest, clickTime, json, notFound } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ code: string }> };
 
 /**
- * Cuerpo: { action: "pause" | "resume" }. Pausa o reanuda el reloj de misión.
- * Usa la hora del servidor, la misma que las marcas. Pausar estando ya en
+ * Cuerpo: { action: "pause" | "resume", at }. Pausa o reanuda el reloj de misión
+ * en el instante del clic (`at`). Pausar estando ya en
  * pausa (o reanudar sin estarlo) no cambia nada.
  */
 export async function POST(req: Request, { params }: Ctx) {
@@ -16,15 +16,16 @@ export async function POST(req: Request, { params }: Ctx) {
   const body = await req.json().catch(() => null);
   const action = body?.action;
   if (action !== "pause" && action !== "resume") return badRequest("action debe ser pause o resume");
+  const at = clickTime(body?.at).toISOString();
 
   // En pausa = la última pausa no tiene `to`.
   const paused = sql`(jsonb_array_length(pauses) > 0 AND pauses->-1->>'to' IS NULL)`;
   const update =
     action === "pause"
       ? sql`pauses = CASE WHEN ${paused} THEN pauses
-              ELSE pauses || jsonb_build_array(jsonb_build_object('from', now(), 'to', null)) END`
+              ELSE pauses || jsonb_build_array(jsonb_build_object('from', ${at}::text, 'to', null)) END`
       : sql`pauses = CASE WHEN ${paused}
-              THEN jsonb_set(pauses, ARRAY[(jsonb_array_length(pauses) - 1)::text, 'to'], to_jsonb(now()))
+              THEN jsonb_set(pauses, ARRAY[(jsonb_array_length(pauses) - 1)::text, 'to'], to_jsonb(${at}::text))
               ELSE pauses END`;
 
   const result = await getDb().execute<{ pauses: { from: string; to: string | null }[] }>(sql`

@@ -1,13 +1,13 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { flights, marks, sessions, steps } from "@/db/schema";
-import { badRequest, findSession, json, notFound, ROLE_RE, UUID_RE } from "@/lib/server";
+import { badRequest, clickTime, findSession, json, notFound, ROLE_RE, UUID_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ code: string }> };
 
-/** Cuerpo: { stepId, flightId (null en ámbito «todos»), status: 'ok'|'warn'|'ko'|'na'|null, role }. null = pendiente. */
+/** Cuerpo: { stepId, flightId (null en ámbito «todos»), status: 'ok'|'warn'|'ko'|'na'|null, role, at }. null = pendiente. */
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
@@ -53,7 +53,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (status) {
     await db.batch([
       remove,
-      db.insert(marks).values({ sessionId: session.id, stepId, flightId: fid, doneBy: role!, status }),
+      db.insert(marks).values({ sessionId: session.id, stepId, flightId: fid, doneBy: role!, status, doneAt: clickTime(body?.at) }),
       touch,
     ]);
   } else {

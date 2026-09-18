@@ -32,6 +32,7 @@ export async function GET(req: Request, { params }: Ctx) {
     content_at: string;
     started_at: string | null;
     pauses: { from: string; to: string | null }[];
+    server_now: string;
     presence: Record<string, { role: string; at: string }>;
   }>(sql`
     UPDATE sessions SET presence = (
@@ -40,7 +41,7 @@ export async function GET(req: Request, { params }: Ctx) {
       WHERE (e.v->>'at')::timestamptz > now() - interval '${sql.raw(PRESENCE_TTL)}'
     )
     WHERE code = ${upper}
-    RETURNING id, updated_at, content_at, started_at, pauses, presence
+    RETURNING id, updated_at, content_at, started_at, pauses, presence, now() AS server_now
   `);
   const s = result.rows[0];
   if (!s) return notFound();
@@ -77,6 +78,8 @@ export async function GET(req: Request, { params }: Ctx) {
     contentAt: new Date(s.content_at).toISOString(),
     startedAt: s.started_at ? new Date(s.started_at).toISOString() : null,
     pauses: s.pauses ?? [],
+    // Para que cada pantalla corrija el desfase de su reloj.
+    serverNow: new Date(s.server_now).toISOString(),
     marks: markRows,
     agencies: agencyRows,
     presence,

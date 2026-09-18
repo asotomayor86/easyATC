@@ -43,7 +43,7 @@ function pausedMs(pauses: Pause[], startedAt: number, at: number) {
  * transcurrido («T+00:12:34»).
  */
 export function missionTime(at: number, startedAt: number, base: number | null, pauses: Pause[] = []): string {
-  const elapsed = (at - startedAt - pausedMs(pauses, startedAt, at)) / 1000;
+  const elapsed = Math.max(0, (at - startedAt - pausedMs(pauses, startedAt, at)) / 1000);
   if (base === null) return `T+${hms(elapsed)}`;
   return hms((base + elapsed) % 86400);
 }
