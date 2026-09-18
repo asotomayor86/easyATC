@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #09090b;
+}
+
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Deja hueco a la cabecera fija al saltar a una fila. */
+[data-row] {
+  scroll-margin-top: 9rem;
+}
