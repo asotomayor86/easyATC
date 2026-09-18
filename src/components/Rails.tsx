@@ -6,8 +6,8 @@ import type { Flight, Mark, Role, Step } from "@/lib/types";
 
 /**
  * Un riel por vuelo: sus transmisiones en orden, separadas por agencia. Los
- * pasos «todos» aparecen en los cuatro rieles, algo mayores. Las alternativas,
- * anillo sin relleno. Todos los rieles tienen la misma estructura, así que las
+ * pasos «todos» aparecen en los cuatro rieles. Las alternativas, anillo sin
+ * relleno. Todos los rieles tienen la misma estructura, así que las
  * agencias quedan alineadas en columnas.
  */
 export const Rails = memo(function Rails({
@@ -64,7 +64,6 @@ export const Rails = memo(function Rails({
                         key={s.id}
                         status={marks.get(k)?.status ?? null}
                         alt={s.alt}
-                        big={s.scope !== "vuelo"}
                         label={`${f.callsign} · ${s.agency} ${s.eta}${s.scope !== "vuelo" ? " (todos)" : ""}`}
                         onClick={() => onJump(k)}
                       />
@@ -108,17 +107,14 @@ export const Rails = memo(function Rails({
 function Dot({
   status,
   alt,
-  big,
   label,
   onClick,
 }: {
   status: "ok" | "ko" | null;
   alt: boolean;
-  big: boolean;
   label: string;
   onClick: () => void;
 }) {
-  const size = big ? "h-[11px] w-[11px]" : "h-[8px] w-[8px]";
   const color =
     status === "ok"
       ? alt
@@ -137,7 +133,7 @@ function Dot({
       title={label}
       aria-label={label}
       onClick={onClick}
-      className={`tint shrink-0 rounded-full border ${alt ? "border-[1.5px]" : ""} ${size} ${color}`}
+      className={`tint shrink-0 rounded-full border ${alt ? "border-[1.5px]" : ""} h-[8px] w-[8px] ${color}`}
     />
   );
 }
