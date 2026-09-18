@@ -36,6 +36,8 @@ export interface ParsedMission {
     eta: string;
     alt: boolean;
     note: string;
+    checklist: string;
+    counts: boolean;
   }[];
 }
 
@@ -47,6 +49,9 @@ export function toMissionFile(session: Session, flights: Flight[], steps: Step[]
     pasos: [...steps]
       .sort((a, b) => a.idx - b.idx)
       .map((s, i) => ({
+        orden: i,
+        checklist: s.checklist,
+        cuenta: s.counts,
         fase: s.phase,
         agencia: s.agency,
         controlador: s.controller,
@@ -58,7 +63,6 @@ export function toMissionFile(session: Session, flights: Flight[], steps: Step[]
         hora: s.eta,
         alternativa: s.alt,
         nota: s.note,
-        orden: i,
       })),
     agencias: GUION.agencias,
   };
@@ -120,6 +124,8 @@ export function parseMissionFile(input: unknown): { ok: true; mission: ParsedMis
       eta: text(p.hora),
       alt: p.alternativa === true,
       note: text(p.nota),
+      checklist: text(p.checklist).trim(),
+      counts: p.cuenta !== false,
     });
   }
   // Orden del archivo, renumerado sin huecos.

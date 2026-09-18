@@ -32,6 +32,9 @@ export interface Step {
   eta: string;
   alt: boolean;
   note: string;
+  checklist: string;
+  /** Si cuenta para los rieles y las estadísticas. */
+  counts: boolean;
 }
 
 export type MarkStatus = "ok" | "warn" | "ko" | "na";

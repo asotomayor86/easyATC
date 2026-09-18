@@ -42,7 +42,7 @@ export function progressOf(rows: Row[], marks: Map<string, Mark>, filter: (r: Ro
   let total = 0;
   let firstPendingKey: string | null = null;
   for (const r of rows) {
-    if (!filter(r)) continue;
+    if (!filter(r) || !r.step.counts) continue;
     const m = marks.get(r.key);
     // Los contadores incluyen las alternativas: también son transmisiones hechas.
     if (m?.status === "ok") ok++;

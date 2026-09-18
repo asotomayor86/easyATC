@@ -385,6 +385,28 @@ export default function ControllerPage() {
       }),
     [updateFolded],
   );
+  // --- Vista por agencia: COMPLETAS o solo CHECKLIST, recordada en el navegador ---
+  const viewStore = `easyatc:view:${code}`;
+  const [checklistView, setChecklistView] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    try {
+      setChecklistView(new Set(JSON.parse(localStorage.getItem(viewStore) ?? "[]")));
+    } catch {}
+  }, [viewStore]);
+  const setAgencyView = useCallback(
+    (agency: string, checklist: boolean) =>
+      setChecklistView((prev) => {
+        const next = new Set(prev);
+        if (checklist) next.add(agency);
+        else next.delete(agency);
+        try {
+          localStorage.setItem(viewStore, JSON.stringify([...next]));
+        } catch {}
+        return next;
+      }),
+    [viewStore],
+  );
+
   // Fila → grupo que la contiene, para desplegarlo antes de saltar a ella.
   const rowFoldKey = useRef(new Map<string, string>());
 
@@ -544,6 +566,8 @@ export default function ControllerPage() {
                 onSet={onSet}
                 onSetState={onAgencySet}
                 folded={folded}
+                checklistOnly={checklistView.has(g.agency)}
+                onSetView={setAgencyView}
                 onToggleFold={toggleFold}
                 onFoldMany={foldMany}
               />
@@ -572,6 +596,8 @@ const AgencySection = memo(function AgencySection({
   folded,
   onToggleFold,
   onFoldMany,
+  checklistOnly,
+  onSetView,
 }: {
   group: AgencyGroup;
   mine: boolean;
@@ -585,6 +611,8 @@ const AgencySection = memo(function AgencySection({
   folded: Set<string>;
   onToggleFold: (key: string) => void;
   onFoldMany: (keys: string[], fold: boolean) => void;
+  checklistOnly: boolean;
+  onSetView: (agency: string, checklist: boolean) => void;
 }) {
   const flightGroups = groupByFlight(group.rows);
   const keys = flightGroups.map((g) => foldKey(group.agency, g.key));
@@ -607,6 +635,7 @@ const AgencySection = memo(function AgencySection({
           </h2>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
           <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
             +
           </FoldButton>
@@ -651,11 +680,12 @@ const AgencySection = memo(function AgencySection({
                         key={r.key}
                         className={`border-l-2 ${coord ? "border-l-coord" : step.alt ? "border-l-alt" : "border-l-transparent"}`}
                       >
-                        {(step.alt || coord || step.note) && (
+                        {(step.alt || coord || (step.note && !checklistOnly) || !step.counts) && (
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pt-1.5 text-[12px]">
                             {step.alt && <Badge tone="alt">Alternativa</Badge>}
                             {coord && <Badge tone="coord">Coordinación</Badge>}
-                            {step.note && <span className="text-zinc-400">{step.note}</span>}
+                            {!step.counts && <Badge tone="mute">No cuenta</Badge>}
+                            {step.note && !checklistOnly && <span className="text-zinc-400">{step.note}</span>}
                           </div>
                         )}
                         <StepRow
@@ -668,6 +698,7 @@ const AgencySection = memo(function AgencySection({
                           onSet={onSet}
                           showCallsign={false}
                           formatTime={formatTime}
+                          checklistOnly={checklistOnly}
                         />
                       </article>
                     );
@@ -751,6 +782,27 @@ function MissionButton({
         {missionTime(now, new Date(startedAt).getTime(), base)}
       </span>
     </button>
+  );
+}
+
+function ViewSwitch({ checklist, onChange }: { checklist: boolean; onChange: (checklist: boolean) => void }) {
+  const item = (active: boolean, label: string, value: boolean, first: boolean) => (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={() => onChange(value)}
+      className={`tint kicker border px-2 py-[5px] text-[10px] ${first ? "" : "-ml-px"} ${
+        active ? "relative z-[1] border-gold bg-gold text-zinc-950" : "border-zinc-700 text-zinc-500 hover:text-zinc-200"
+      }`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div role="group" aria-label="Vista de la agencia" className="flex">
+      {item(!checklist, "Completas", false, true)}
+      {item(checklist, "Checklist", true, false)}
+    </div>
   );
 }
 

@@ -25,6 +25,7 @@ export const StepRow = memo(function StepRow({
   onSet,
   showCallsign = true,
   formatTime = wallTime,
+  checklistOnly = false,
 }: {
   rowKey: string;
   step: Step;
@@ -37,6 +38,8 @@ export const StepRow = memo(function StepRow({
   showCallsign?: boolean;
   /** Hora de misión de la marca, una vez pulsado Inicio. */
   formatTime?: (iso: string) => string;
+  /** Solo el nombre resumen de la checklist, sin los textos completos. */
+  checklistOnly?: boolean;
 }) {
   const status = mark?.status ?? null;
   const fv = flight?.vars ?? EMPTY;
@@ -70,6 +73,19 @@ export const StepRow = memo(function StepRow({
       </div>
 
       <div className="w-full min-w-0 pb-0.5 sm:w-auto sm:flex-1 sm:pt-[2px]">
+        {checklistOnly ? (
+          step.checklist ? (
+            <p className={`tint text-[15px] font-semibold ${status ? "text-zinc-500" : "text-zinc-50"}`}>
+              {step.checklist}
+            </p>
+          ) : (
+            // Sin nombre de checklist: la transmisión, en gris, para que la fila no quede vacía.
+            <p className="truncate text-[13px] text-zinc-500">
+              <Rendered text={step.atcText} flightVars={fv} sessionVars={sessionVars} />
+            </p>
+          )
+        ) : (
+          <>
         {step.pilotText && (
           <p className="text-[12px] text-pilot">
             <Rendered text={step.pilotText} flightVars={fv} sessionVars={sessionVars} />
@@ -86,6 +102,8 @@ export const StepRow = memo(function StepRow({
           <p className="text-[12px] text-zinc-500">
             <Rendered text={step.readbackText} flightVars={fv} sessionVars={sessionVars} />
           </p>
+        )}
+          </>
         )}
       </div>
 

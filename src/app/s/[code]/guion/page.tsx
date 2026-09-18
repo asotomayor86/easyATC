@@ -27,7 +27,7 @@ export default function GuionPage() {
     phases.get(s.phase)!.push(s);
   }
 
-  const save = (id: string, field: "pilotText" | "atcText" | "readbackText") => async (v: string) => {
+  const save = (id: string, field: "pilotText" | "atcText" | "readbackText" | "checklist") => async (v: string) => {
     await api(`/api/s/${code}/steps/${id}`, "PATCH", { [field]: v });
   };
 
@@ -100,6 +100,7 @@ export default function GuionPage() {
                   <Tag>inicia: {s.initiator}</Tag>
                   <span className="text-zinc-500">{s.eta}</span>
                   {s.alt && <Tag tone="alt">alternativa</Tag>}
+                  <CountsToggle code={code} step={s} />
                   {s.note && <span className="text-zinc-400 italic">{s.note}</span>}
                   <span className="ml-auto flex gap-1.5">
                     <button
@@ -121,6 +122,9 @@ export default function GuionPage() {
                   </span>
                 </div>
                 <div className="grid gap-3">
+                  <Field label="Checklist (nombre resumen)" tone="text-gold">
+                    <BlurInput value={s.checklist} onSave={save(s.id, "checklist")} placeholder="(sin nombre de checklist)" />
+                  </Field>
                   <Field label="Llamada del piloto" tone="text-pilot">
                     <BlurInput value={s.pilotText ?? ""} onSave={save(s.id, "pilotText")} multiline placeholder="(sin llamada)" />
                   </Field>
@@ -146,6 +150,34 @@ export default function GuionPage() {
       </div>
       <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
     </main>
+  );
+}
+
+/** Casilla «cuenta para rieles y estadísticas»: se guarda al pulsarla. */
+function CountsToggle({ code, step }: { code: string; step: Step }) {
+  const [on, setOn] = useState(step.counts);
+  const [failed, setFailed] = useState(false);
+  return (
+    <label className={`kicker flex cursor-pointer items-center gap-1.5 text-[10px] ${on ? "text-zinc-300" : "text-zinc-500"}`}>
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={async (e) => {
+          const v = e.target.checked;
+          setOn(v);
+          setFailed(false);
+          try {
+            await api(`/api/s/${code}/steps/${step.id}`, "PATCH", { counts: v });
+          } catch {
+            setOn(!v);
+            setFailed(true);
+          }
+        }}
+        className="h-3.5 w-3.5 accent-[var(--color-gold)]"
+      />
+      Cuenta para rieles y estadísticas
+      {failed && <span className="text-ko">· no se guardó</span>}
+    </label>
   );
 }
 

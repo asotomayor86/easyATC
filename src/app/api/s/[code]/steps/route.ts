@@ -49,6 +49,8 @@ export async function POST(req: Request, { params }: Ctx) {
         eta: cur.eta,
         alt: false,
         note: "",
+        checklist: "",
+        counts: true,
       })
       .returning(),
     db.update(sessions).set({ contentAt: sql`now()` }).where(eq(sessions.id, session.id)),

@@ -24,8 +24,10 @@ export const Rails = memo(function Rails({
   role: Role;
   onJump: (rowKey: string) => void;
 }) {
+  // Las comunicaciones que no cuentan no aparecen en los rieles.
+  const counted = steps.filter((s) => s.counts);
   const segments: { agency: string; controller: Role; steps: Step[] }[] = [];
-  for (const s of steps) {
+  for (const s of counted) {
     const last = segments[segments.length - 1];
     if (last && last.agency === s.agency) last.steps.push(s);
     else segments.push({ agency: s.agency, controller: s.controller, steps: [s] });
@@ -84,7 +86,7 @@ export const Rails = memo(function Rails({
           let done = 0;
           let total = 0;
           const n = { ok: 0, warn: 0, ko: 0, na: 0 };
-          for (const s of steps) {
+          for (const s of counted) {
             const m = marks.get(keyFor(s, f));
             if (m) n[m.status]++;
             if (s.alt) continue;

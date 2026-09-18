@@ -62,6 +62,10 @@ export const steps = pgTable(
     eta: text("eta").notNull().default(""),
     alt: boolean("alt").notNull().default(false),
     note: text("note").notNull().default(""),
+    // Nombre resumen para la vista de checklist.
+    checklist: text("checklist").notNull().default(""),
+    // Si cuenta para los rieles y las estadísticas.
+    counts: boolean("counts").notNull().default(true),
   },
   (t) => [index("steps_session_idx").on(t.sessionId)],
 );

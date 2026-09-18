@@ -13,6 +13,8 @@ export interface GuionPaso {
   alternativa: boolean;
   nota: string;
   orden: number;
+  checklist?: string;
+  cuenta?: boolean;
 }
 
 export interface GuionAgencia {
