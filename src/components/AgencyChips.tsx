@@ -29,12 +29,11 @@ export function AgencyChips({
             title={`Ir a ${agencyName(a.id)} · ${state}`}
             aria-current={current === a.id ? "true" : undefined}
             className={`tint relative flex min-w-[84px] shrink-0 items-center gap-2 rounded-[2px] border px-2 py-1 text-left ${
-              state === "abierta"
-                ? "border-gold bg-zinc-900"
-                : state === "finalizada"
-                  ? "border-zinc-800 bg-zinc-950 opacity-60"
-                  : "border-zinc-800 bg-zinc-950"
-            }`}
+              // Las agencias propias llevan fondo dorado tenue en cualquier estado.
+              mine ? "bg-gold/20" : state === "abierta" ? "bg-zinc-900" : "bg-zinc-950"
+            } ${
+              state === "abierta" ? "border-gold" : mine ? "border-gold/35" : "border-zinc-800"
+            } ${state === "finalizada" ? "opacity-60" : ""}`}
           >
             <StateMark state={state} />
             {/* La agencia que está en el centro de la pantalla */}
@@ -42,12 +41,12 @@ export function AgencyChips({
             <span className="min-w-0">
               <span
                 className={`tint block font-cond text-[15px] leading-none font-bold tracking-wide ${
-                  state === "abierta" ? "text-zinc-50" : "text-zinc-500"
+                  state === "abierta" || mine ? "text-zinc-50" : "text-zinc-500"
                 }`}
               >
                 {a.id}
               </span>
-              <span className="kicker mt-0.5 block text-[10px] text-zinc-500">
+              <span className={`kicker mt-0.5 block text-[10px] ${mine ? "text-zinc-300" : "text-zinc-500"}`}>
                 CH {agencyChannel(a.id, sessionVars)} ·{" "}
                 <span className={mine ? "text-gold" : ""}>{a.controlador}</span>
               </span>
