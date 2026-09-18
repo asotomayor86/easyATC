@@ -2,7 +2,9 @@
 
 import { memo } from "react";
 import { Rendered } from "@/lib/template";
-import type { Flight, Mark, MarkStatus, Step, Vars } from "@/lib/types";
+import { MARK_STATUSES, type Flight, type Mark, type MarkStatus, type Step, type Vars } from "@/lib/types";
+
+const STATUS_TEXT: Record<MarkStatus, string> = { ok: "text-ok", warn: "text-warn", ko: "text-ko" };
 
 const EMPTY: Vars = {};
 
@@ -38,12 +40,13 @@ export const StepRow = memo(function StepRow({
     <div
       data-row={rowKey}
       className={`tint flex flex-wrap items-start gap-x-2 px-2 py-[7px] sm:flex-nowrap ${
-        highlighted ? "bg-gold/20" : status === "ko" ? "bg-ko/10" : ""
+        highlighted ? "bg-gold/20" : status === "ko" ? "bg-ko/10" : status === "warn" ? "bg-warn/10" : ""
       }`}
     >
       <div className="flex shrink-0">
-        <MarkButton kind="ok" active={status === "ok"} onClick={() => toggle("ok")} />
-        <MarkButton kind="ko" active={status === "ko"} onClick={() => toggle("ko")} />
+        {MARK_STATUSES.map((k) => (
+          <MarkButton key={k} kind={k} active={status === k} onClick={() => toggle(k)} />
+        ))}
       </div>
 
       <div className="flex min-w-0 items-baseline gap-2 pt-[3px] sm:w-[88px] sm:shrink-0 sm:flex-col sm:gap-0">
@@ -74,8 +77,8 @@ export const StepRow = memo(function StepRow({
       </div>
 
       {mark && (
-        <div className="ml-[60px] shrink-0 pt-[3px] text-right text-[12px] leading-tight sm:ml-0 sm:w-[64px]">
-          <span className={`kicker ${mark.status === "ok" ? "text-ok" : "text-ko"}`}>{mark.status}</span>{" "}
+        <div className="ml-[90px] shrink-0 pt-[3px] text-right text-[12px] leading-tight sm:ml-0 sm:w-[64px]">
+          <span className={`kicker ${STATUS_TEXT[mark.status]}`}>{mark.status}</span>{" "}
           <span className="text-zinc-500">{hhmm(mark.doneAt)}</span>
           {mark.doneBy !== step.controller && <div className="kicker text-gold">por {mark.doneBy}</div>}
         </div>
@@ -84,28 +87,43 @@ export const StepRow = memo(function StepRow({
   );
 });
 
+const BUTTONS: Record<MarkStatus, { icon: string; label: string; on: string; off: string }> = {
+  ok: {
+    icon: "✓",
+    label: "Correcta",
+    on: "border-ok bg-ok text-zinc-950",
+    off: "border-zinc-600 text-zinc-600 hover:border-ok hover:text-ok",
+  },
+  warn: {
+    icon: "!",
+    label: "Con aviso",
+    on: "border-warn bg-warn text-zinc-950",
+    off: "border-zinc-600 text-zinc-600 hover:border-warn hover:text-warn",
+  },
+  ko: {
+    icon: "✕",
+    label: "Con error",
+    on: "border-ko bg-ko text-zinc-950",
+    off: "border-zinc-600 text-zinc-600 hover:border-ko hover:text-ko",
+  },
+};
+
 function MarkButton({ kind, active, onClick }: { kind: MarkStatus; active: boolean; onClick: () => void }) {
-  const ok = kind === "ok";
+  const b = BUTTONS[kind];
   return (
     <button
       type="button"
       aria-pressed={active}
-      aria-label={ok ? "Correcta" : "Con error"}
+      aria-label={b.label}
       onClick={onClick}
       className="hit flex h-[30px] w-[30px] items-center justify-center"
     >
       <span
         className={`tint flex h-[22px] w-[22px] items-center justify-center rounded-[2px] border text-[13px] leading-none font-bold ${
-          active
-            ? ok
-              ? "border-ok bg-ok text-zinc-950"
-              : "border-ko bg-ko text-zinc-950"
-            : ok
-              ? "border-zinc-600 text-zinc-600 hover:border-ok hover:text-ok"
-              : "border-zinc-600 text-zinc-600 hover:border-ko hover:text-ko"
+          active ? b.on : b.off
         }`}
       >
-        {ok ? "✓" : "✕"}
+        {b.icon}
       </span>
     </button>
   );

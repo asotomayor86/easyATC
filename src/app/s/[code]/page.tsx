@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgencyChips } from "@/components/AgencyChips";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { Rails } from "@/components/Rails";
+import { StatusCounts } from "@/components/StatusCounts";
 import { StepRow, type SetStatus } from "@/components/StepRow";
 import { api, clientId, useSessionData } from "@/lib/client";
 import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
@@ -401,11 +402,12 @@ export default function ControllerPage() {
               <div className="h-1 max-w-[240px] flex-1 bg-zinc-800">
                 <div className="h-full bg-ok" style={{ width: `${mine.pct}%` }} />
               </div>
-              <span className={`kicker ${mine.ko ? "text-ko" : "text-zinc-600"}`}>{mine.ko} KO</span>
+              <StatusCounts ok={mine.ok} warn={mine.warn} ko={mine.ko} />
               <span className="hidden gap-3 border-l border-zinc-800 pl-3 md:flex">
                 {ROLES.filter((r) => r !== role).map((r) => (
                   <span key={r} className="kicker text-zinc-500">
                     <span className="text-zinc-300">{r}</span> {progress[r].pct}%
+                    {progress[r].warn > 0 && <span className="text-warn"> · {progress[r].warn} W</span>}
                     {progress[r].ko > 0 && <span className="text-ko"> · {progress[r].ko} KO</span>}
                   </span>
                 ))}
@@ -522,6 +524,7 @@ const AgencySection = memo(function AgencySection({
           <Badge tone={mine ? "gold" : "mute"}>
             {progress.done}/{progress.total}
           </Badge>
+          {progress.warn > 0 && <Badge tone="warn">{progress.warn} WARN</Badge>}
           {progress.ko > 0 && <Badge tone="ko">{progress.ko} KO</Badge>}
         </div>
       </header>
@@ -622,6 +625,7 @@ function StateSwitch({ state, onChange }: { state: AgencyStateName; onChange: (s
 
 const BADGE_TONES = {
   gold: "border-gold/70 text-gold",
+  warn: "border-warn/70 text-warn",
   ko: "border-ko/70 text-ko",
   coord: "border-coord/70 text-coord",
   alt: "border-alt/70 text-alt",

@@ -22,7 +22,9 @@ export function buildRows(steps: Step[], flights: Flight[]): Row[] {
 }
 
 export interface Progress {
-  done: number; // ok + ko
+  done: number; // ok + warn + ko
+  ok: number;
+  warn: number;
   ko: number;
   total: number;
   pct: number;
@@ -32,19 +34,24 @@ export interface Progress {
 /** Progreso de las filas que cumplan `filter`. Las alternativas no cuentan para el total. */
 export function progressOf(rows: Row[], marks: Map<string, Mark>, filter: (r: Row) => boolean): Progress {
   let done = 0;
+  let ok = 0;
+  let warn = 0;
   let ko = 0;
   let total = 0;
   let firstPendingKey: string | null = null;
   for (const r of rows) {
     if (!filter(r)) continue;
     const m = marks.get(r.key);
-    if (m?.status === "ko") ko++; // un error en una alternativa también cuenta como error
+    // Los contadores incluyen las alternativas: también son transmisiones hechas.
+    if (m?.status === "ok") ok++;
+    else if (m?.status === "warn") warn++;
+    else if (m?.status === "ko") ko++;
     if (r.step.alt) continue;
     total++;
     if (m) done++;
     else if (!firstPendingKey) firstPendingKey = r.key;
   }
-  return { done, ko, total, pct: total ? Math.round((done / total) * 100) : 0, firstPendingKey };
+  return { done, ok, warn, ko, total, pct: total ? Math.round((done / total) * 100) : 0, firstPendingKey };
 }
 
 export const progressForRole = (role: Role, rows: Row[], marks: Map<string, Mark>) =>

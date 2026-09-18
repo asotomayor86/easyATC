@@ -90,8 +90,8 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   Las nueve agencias van una al lado de otra: la de trabajo en el centro y
   las vecinas asomando a los lados. Se cambia con los botones laterales,
   deslizando, con las flechas ← → del teclado o pulsando su ficha arriba.
-  - Cada transmisión se marca como correcta (✓) o con error (✕); pulsar el
-    botón activo la devuelve a pendiente. Tocar algo de otro controlador pide
+  - Cada transmisión se marca como correcta (✓), con aviso (!) o con error
+    (✕); pulsar el botón activo la devuelve a pendiente. Tocar algo de otro controlador pide
     confirmación.
   - Cada agencia se abre, cierra o finaliza desde su propia cabecera.
   - Los rieles (uno por vuelo) resumen toda la misión; pulsar un punto lleva

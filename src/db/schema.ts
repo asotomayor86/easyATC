@@ -77,7 +77,7 @@ export const marks = pgTable(
     flightId: uuid("flight_id").references(() => flights.id, { onDelete: "cascade" }),
     doneAt: timestamp("done_at", { withTimezone: true }).notNull().defaultNow(),
     doneBy: text("done_by").notNull(),
-    // 'ok' = bien transmitida, 'ko' = con error. Sin fila = pendiente.
+    // 'ok' = bien, 'warn' = con reparos, 'ko' = con error. Sin fila = pendiente.
     status: text("status").notNull().default("ok"),
   },
   (t) => [

@@ -2,7 +2,8 @@
 
 import { memo } from "react";
 import { rowKey } from "@/lib/progress";
-import type { Flight, Mark, Role, Step } from "@/lib/types";
+import type { Flight, Mark, MarkStatus, Role, Step } from "@/lib/types";
+import { StatusCounts } from "./StatusCounts";
 
 /**
  * Un riel por vuelo: sus transmisiones en orden, separadas por agencia. Los
@@ -82,10 +83,10 @@ export const Rails = memo(function Rails({
         {flights.map((f) => {
           let done = 0;
           let total = 0;
-          let ko = 0;
+          const n = { ok: 0, warn: 0, ko: 0 };
           for (const s of steps) {
             const m = marks.get(keyFor(s, f));
-            if (m?.status === "ko") ko++;
+            if (m) n[m.status]++;
             if (s.alt) continue;
             total++;
             if (m) done++;
@@ -95,7 +96,7 @@ export const Rails = memo(function Rails({
               <span className="text-zinc-300">
                 {done}/{total}
               </span>
-              <span className={ko ? "text-ko" : "text-zinc-700"}>{ko} KO</span>
+              <StatusCounts {...n} />
             </div>
           );
         })}
@@ -110,7 +111,7 @@ function Dot({
   label,
   onClick,
 }: {
-  status: "ok" | "ko" | null;
+  status: MarkStatus | null;
   alt: boolean;
   label: string;
   onClick: () => void;
@@ -120,10 +121,14 @@ function Dot({
       ? alt
         ? "border-ok"
         : "border-ok bg-ok"
-      : status === "ko"
+      : status === "warn"
         ? alt
-          ? "border-ko"
-          : "border-ko bg-ko"
+          ? "border-warn"
+          : "border-warn bg-warn"
+        : status === "ko"
+          ? alt
+            ? "border-ko"
+            : "border-ko bg-ko"
         : alt
           ? "border-zinc-500"
           : "border-zinc-700 bg-zinc-700";
