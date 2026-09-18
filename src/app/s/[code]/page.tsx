@@ -55,7 +55,7 @@ export default function ControllerPage() {
       const r = localStorage.getItem(roleKey);
       if (r && (ROLES as string[]).includes(r)) setRoleState(r as Role);
       const rails = localStorage.getItem("easyatc:rails");
-      setRailsOpen(rails ? rails === "1" : window.innerWidth >= 640);
+      setRailsOpen(rails ? rails === "1" : true);
     } catch {}
     setRoleLoaded(true);
   }, [roleKey]);
@@ -313,7 +313,7 @@ export default function ControllerPage() {
 
           {railsOpen && (
             <div className="mt-2 border-t border-zinc-800 pt-2">
-              <Rails groups={groups} marks={marks} role={role} onJump={jumpTo} />
+              <Rails steps={data.steps} flights={data.flights} marks={marks} role={role} onJump={jumpTo} />
             </div>
           )}
         </div>
