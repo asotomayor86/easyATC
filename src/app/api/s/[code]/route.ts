@@ -2,7 +2,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { sessions, flights, steps } from "@/db/schema";
 import { normalizeBoard } from "@/lib/board";
-import { badRequest, cleanPlanOrder, cleanVars, json, notFound } from "@/lib/server";
+import { badRequest, cleanPlanOrder, cleanVarOrder, cleanVars, json, notFound } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       resetAt: sessions.resetAt,
       board: sessions.board,
       planOrder: sessions.planOrder,
+      varOrder: sessions.varOrder,
     })
     .from(sessions)
     .where(eq(sessions.code, code.toUpperCase()))
@@ -29,7 +30,16 @@ export async function GET(_req: Request, { params }: Ctx) {
 
   const [flightRows, stepRows] = await db.batch([
     db
-      .select({ id: flights.id, callsign: flights.callsign, idx: flights.idx, vars: flights.vars })
+      .select({
+        id: flights.id,
+        callsign: flights.callsign,
+        idx: flights.idx,
+        vars: flights.vars,
+        parentId: flights.parentId,
+        createdBy: flights.createdBy,
+        mergedFrom: flights.mergedFrom,
+        mergedAt: flights.mergedAt,
+      })
       .from(flights)
       .where(eq(flights.sessionId, session.id))
       .orderBy(asc(flights.idx)),
@@ -45,8 +55,8 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 /**
- * Cuerpo: { vars?: {clave: valor}, name?: string, planOrder?: {clave: número} }.
- * Las variables se fusionan; el orden del plan se sustituye entero.
+ * Cuerpo: { vars?: {clave: valor}, name?: string, planOrder?: {clave: número}, varOrder?: [clave] }.
+ * Las variables se fusionan; los órdenes se sustituyen enteros.
  */
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
@@ -56,6 +66,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 80) : null;
   const planOrder = body?.planOrder === undefined ? null : cleanPlanOrder(body.planOrder);
   if (body?.planOrder !== undefined && !planOrder) return badRequest("planOrder debe ser {variable: número}");
+  const varOrder = body?.varOrder === undefined ? null : cleanVarOrder(body.varOrder);
+  if (body?.varOrder !== undefined && !varOrder) return badRequest("varOrder debe ser una lista de variables");
 
   const [row] = await getDb()
     .update(sessions)
@@ -63,10 +75,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
       vars: sql`${sessions.vars} || ${JSON.stringify(vars)}::jsonb`,
       ...(name ? { name } : {}),
       ...(planOrder ? { planOrder } : {}),
+      ...(varOrder ? { varOrder } : {}),
       contentAt: sql`now()`,
     })
     .where(eq(sessions.code, code.toUpperCase()))
-    .returning({ vars: sessions.vars, name: sessions.name, planOrder: sessions.planOrder });
+    .returning({ vars: sessions.vars, name: sessions.name, planOrder: sessions.planOrder, varOrder: sessions.varOrder });
   if (!row) return notFound();
   return json(row);
 }

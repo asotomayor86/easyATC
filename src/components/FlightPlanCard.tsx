@@ -12,11 +12,13 @@ export function FlightPlanCard({
   flight,
   sessionVars,
   planOrder,
+  formatTime,
   at,
 }: {
   flight: Flight;
   sessionVars: Vars;
   planOrder: Record<string, number> | undefined;
+  formatTime: (iso: string) => string;
   /** Rectángulo de la pastilla: la ficha se coloca debajo, sin salirse de la pantalla. */
   at: { left: number; bottom: number };
 }) {
@@ -44,6 +46,11 @@ export function FlightPlanCard({
             </Fragment>
           ))}
         </dl>
+      )}
+      {flight.mergedFrom && flight.mergedAt && (
+        <p className="mt-1.5 border-t border-zinc-800 pt-1.5 text-[12px] text-zinc-500">
+          Absorbió a {flight.mergedFrom} a las {formatTime(flight.mergedAt)}
+        </p>
       )}
     </div>
   );

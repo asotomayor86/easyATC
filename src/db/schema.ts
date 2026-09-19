@@ -30,6 +30,10 @@ export const sessions = pgTable("sessions", {
   boardState: jsonb("board_state").$type<BoardState>().notNull().default({}),
   // Orden de las variables en el plan de vuelo impreso (variable → 1, 2, 3…); sin número, no sale.
   planOrder: jsonb("plan_order").$type<Record<string, number>>().notNull().default({}),
+  // Orden en que se listan las variables en la página de variables (se reordena arrastrando).
+  varOrder: jsonb("var_order").$type<string[]>().notNull().default([]),
+  // Reparto de vuelos original (al crear o importar la misión), para «restaurar vuelos».
+  flightsBase: jsonb("flights_base").$type<{ callsign: string; vars: Vars }[]>().notNull().default([]),
   // Cambia con cada marca o reset: lo usa el sondeo para saber si hay novedades.
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   // Cambia al editar variables o textos: el cliente recarga el guion.
@@ -48,6 +52,13 @@ export const flights = pgTable(
     callsign: text("callsign").notNull(),
     idx: integer("idx").notNull(),
     vars: jsonb("vars").$type<Vars>().notNull().default({}),
+    // Vuelo del que se desprendió (división), con quién y cuándo.
+    parentId: uuid("parent_id"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Vuelo que absorbió (combinación): indicativo y hora.
+    mergedFrom: text("merged_from"),
+    mergedAt: timestamp("merged_at", { withTimezone: true }),
   },
   (t) => [index("flights_session_idx").on(t.sessionId)],
 );

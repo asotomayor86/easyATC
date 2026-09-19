@@ -83,10 +83,13 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
 ## Uso
 
 - **`/`** — crea una sesión nueva (copia el guion completo) o entra con un código.
-- **`/s/CODIGO/setup`** — variables globales y de cada vuelo. Se guarda al salir
-  de cada campo. La casilla **Plan** de cada variable fija su orden en el plan
-  de vuelo impreso: al pulsarla toma el siguiente número; al volver a pulsarla
-  se quita y las demás se renumeran. Sin número, la variable no se imprime.
+- **`/s/CODIGO/setup`** — variables globales y tabla **Plan de vuelo** (las
+  variables de cada vuelo). Se guarda al salir de cada campo. Cada variable se
+  arrastra por su asa `⠿` para colocarla donde quieras, con una línea dorada en
+  el hueco donde va a caer; el orden se guarda en la sesión. En la tabla, la
+  casilla **Plan** marca las variables que salen en el plan de vuelo impreso:
+  el número es su posición entre las marcadas, de arriba a abajo. El botón `×`
+  de cada fila borra la variable y su valor en todos los vuelos.
 - **`/s/CODIGO/guion`** — textos de las transmisiones. Son plantillas: un
   cambio se aplica a los cuatro vuelos de esa sesión, y solo a esa sesión.
   Cada comunicación tiene «+ Añadir debajo» (crea una nueva con la misma
@@ -106,6 +109,14 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
     agencia; los vuelos son pastillas que se arrastran (o se tocan y luego se
     toca el destino). Las entradas enlazadas muestran, en el mismo orden, los
     vuelos que la agencia anterior ha puesto en su salida, y no son editables.
+  - Cada vuelo está en un único sitio: al sacarlo de una entrada enlazada
+    desaparece de la agencia anterior.
+  - Botón derecho (o pulsación larga en táctil) sobre una pastilla:
+    **dividir** el vuelo (nace sin plan, con el color del original rayado, en
+    la entrada de esa agencia), **combinar** con otro vuelo de la agencia (el
+    elegido sobrevive y hereda las marcas del absorbido) o **enviar a** la
+    entrada de cualquier agencia. El menú ⋯ de la cabecera tiene «Restaurar
+    vuelos», que deshace divisiones y combinaciones; el reset no las toca.
 - **Exportar / Importar JSON** (en Guion y en Variables) — descarga o carga la
   misión completa (variables, vuelos y guion) en el formato de `guion.json`,
   con los campos `checklist` y `cuenta` en cada paso.

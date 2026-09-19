@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "var_order" jsonb DEFAULT '[]'::jsonb NOT NULL;

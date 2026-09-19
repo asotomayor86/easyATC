@@ -1,10 +1,10 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FLIGHT_COLORS,
   POOL_ZONE,
-  sendTargets,
   slotKey,
   stackCell,
   type AgencyLayout,
@@ -12,8 +12,12 @@ import {
   type BoardPos,
   type Zone,
 } from "@/lib/board";
+import { FlightMenu, type MenuRequest, type Move } from "@/components/FlightMenu";
 import { FlightPlanCard } from "@/components/FlightPlanCard";
-import type { Flight, Vars } from "@/lib/types";
+import type { AgencyStateName, Flight, Vars } from "@/lib/types";
+
+/** Dibuja algo por encima de todo, fuera de la tarjeta de la agencia. */
+const overlay = (node: React.ReactNode) => (typeof document === "undefined" ? null : createPortal(node, document.body));
 
 /** Color del vuelo según el tablero (clave: nombre corto en mayúsculas). */
 export function flightColor(flight: Flight, colores: Board["colores"]) {
@@ -39,9 +43,15 @@ export const BoardStrip = memo(function BoardStrip({
   planOrder,
   layout,
   onMove,
+  agency,
+  layouts,
   allZones,
+  agencyStates,
   current,
-  onSend,
+  formatTime,
+  onMoves,
+  onSplit,
+  onMerge,
 }: {
   zones: Zone[];
   flights: Flight[];
@@ -51,18 +61,25 @@ export const BoardStrip = memo(function BoardStrip({
   planOrder: Record<string, number> | undefined;
   layout: AgencyLayout;
   onMove: MoveFlight;
-  /** Tablero completo (todas las agencias), para el menú de «enviar a». */
+  /** Agencia de este tablero y colocación de todas, para el menú del vuelo. */
+  agency: string;
+  layouts: Record<string, AgencyLayout>;
   allZones: Record<string, Zone[]>;
+  agencyStates: Map<string, AgencyStateName>;
   /** Dónde está ahora cada vuelo. */
   current: Record<string, { agency: string; pos: BoardPos }>;
-  /** Envía un vuelo a cualquier posición del tablero, de cualquier agencia. */
-  onSend: (agency: string, flightId: string, zone: string, slot: string | null) => void;
+  formatTime: (iso: string) => string;
+  onMoves: (moves: Move[]) => void;
+  onSplit: (flight: Flight) => void;
+  onMerge: (from: Flight, into: Flight) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   // Pastilla bajo el ratón: muestra la ficha con el plan de vuelo.
   const [hover, setHover] = useState<{ id: string; left: number; bottom: number } | null>(null);
   // Menú del botón derecho sobre una pastilla: enviar el vuelo a otra posición.
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<MenuRequest | null>(null);
+  // Pulsación larga en táctil: equivale al botón derecho.
+  const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const start = useRef<{ id: string; x: number; y: number; dragging: boolean } | null>(null);
@@ -104,7 +121,7 @@ export const BoardStrip = memo(function BoardStrip({
           e.preventDefault();
           setHover(null);
           setSelected(null);
-          setMenu({ id: f.id, x: e.clientX, y: e.clientY });
+          setMenu({ flight: f, x: e.clientX, y: e.clientY });
         }}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
@@ -112,16 +129,27 @@ export const BoardStrip = memo(function BoardStrip({
           e.stopPropagation();
           start.current = { id: f.id, x: e.clientX, y: e.clientY, dragging: false };
           e.currentTarget.setPointerCapture(e.pointerId);
+          if (e.pointerType !== "mouse") {
+            const { clientX, clientY } = e;
+            clearTimeout(longPress.current);
+            longPress.current = setTimeout(() => {
+              start.current = null;
+              navigator.vibrate?.(15);
+              setMenu({ flight: f, x: clientX, y: clientY });
+            }, 500);
+          }
         }}
         onPointerMove={(e) => {
           const s = start.current;
           if (!s) return;
           if (!s.dragging && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 6) return;
+          clearTimeout(longPress.current);
           s.dragging = true;
           setDrag({ id: s.id, x: e.clientX, y: e.clientY });
           setOver(targetAt(e.clientX, e.clientY));
         }}
         onPointerUp={(e) => {
+          clearTimeout(longPress.current);
           const s = start.current;
           start.current = null;
           if (!s) return;
@@ -135,6 +163,7 @@ export const BoardStrip = memo(function BoardStrip({
           setOver(null);
         }}
         onPointerCancel={() => {
+          clearTimeout(longPress.current);
           start.current = null;
           setDrag(null);
           setOver(null);
@@ -144,7 +173,13 @@ export const BoardStrip = memo(function BoardStrip({
         className={`inline-flex cursor-grab touch-none items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-cond text-[14px] leading-none font-semibold text-zinc-50 select-none ${
           isSelected ? "ring-2 ring-gold ring-offset-1 ring-offset-zinc-950" : ""
         } ${isDragged ? "opacity-30" : ""}`}
-        style={{ borderColor: color, background: `${color}2e` }}
+        style={{
+          borderColor: color,
+          // Los vuelos nacidos de una división llevan un rayado diagonal del mismo color.
+          background: f.parentId
+            ? `repeating-linear-gradient(45deg, ${color}22 0 5px, ${color}66 5px 10px)`
+            : `${color}2e`,
+        }}
       >
         {index !== undefined && <span className="text-[11px] text-zinc-300">{index}º</span>}
         <span className="h-2 w-2 rounded-full" style={{ background: color }} />
@@ -228,43 +263,68 @@ export const BoardStrip = memo(function BoardStrip({
         </p>
       )}
 
-      {menu && (
-        <SendMenu
-          flight={flights.find((x) => x.id === menu.id)!}
-          x={menu.x}
-          y={menu.y}
-          allZones={allZones}
-          current={current[menu.id]}
-          onPick={(agency, zone, slot) => {
-            onSend(agency, menu.id, zone, slot);
-            setMenu(null);
-          }}
-          onClose={() => setMenu(null)}
-        />
-      )}
+      {/*
+        Menú, ficha del plan y pastilla arrastrada se dibujan fuera de la tarjeta
+        de la agencia: las agencias ajenas se atenúan, y aquí no debe notarse.
+      */}
+      {overlay(
+        <>
+          {menu && (
+            <FlightMenu
+              request={menu}
+              agency={agency}
+              flights={flights}
+              layouts={layouts}
+              allZones={allZones}
+              agencyStates={agencyStates}
+              current={current}
+              onSplit={(f) => {
+                setMenu(null);
+                onSplit(f);
+              }}
+              onMerge={(from, into) => {
+                setMenu(null);
+                onMerge(from, into);
+              }}
+              onMoves={(moves) => {
+                setMenu(null);
+                onMoves(moves);
+              }}
+              onClose={() => setMenu(null)}
+            />
+          )}
 
-      {hover && !drag && !menu && (() => {
-        const f = flights.find((x) => x.id === hover.id);
-        return f ? <FlightPlanCard flight={f} sessionVars={sessionVars} planOrder={planOrder} at={hover} /> : null;
-      })()}
+          {hover &&
+            !drag &&
+            !menu &&
+            (() => {
+              const f = flights.find((x) => x.id === hover.id);
+              return f ? (
+                <FlightPlanCard flight={f} sessionVars={sessionVars} planOrder={planOrder} formatTime={formatTime} at={hover} />
+              ) : null;
+            })()}
 
-      {/* La pastilla sigue al puntero mientras se arrastra. */}
-      {drag && (
-        <div className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2" style={{ left: drag.x, top: drag.y }}>
-          {(() => {
-            const f = flights.find((x) => x.id === drag.id);
-            if (!f) return null;
-            const color = colorOf(f);
-            return (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-cond text-[14px] leading-none font-semibold text-zinc-50"
-                style={{ borderColor: color, background: `${color}` }}
-              >
-                {f.vars.corto || f.callsign}
-              </span>
-            );
-          })()}
-        </div>
+          {/* La pastilla sigue al puntero mientras se arrastra. */}
+          {drag &&
+            (() => {
+              const f = flights.find((x) => x.id === drag.id);
+              if (!f) return null;
+              const color = colorOf(f);
+              return (
+                <div
+                  className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: drag.x, top: drag.y }}
+                >
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-cond text-[14px] leading-none font-semibold text-zinc-50"
+                    style={{ borderColor: color, background: color }}
+                  >
+                    {f.vars.corto || f.callsign}
+                  </span>
+                </div>
+              );
+            })()}
+        </>,
       )}
     </div>
   );
@@ -340,76 +400,4 @@ function StackGrid({ zone, drop }: { zone: Zone; drop: (zone: string, slot: stri
 /** Las celdas de una fila van directamente a la rejilla. */
 function Row({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
-}
-
-/** Menú «Enviar a»: todas las posiciones del tablero, agrupadas por agencia. */
-function SendMenu({
-  flight,
-  x,
-  y,
-  allZones,
-  current,
-  onPick,
-  onClose,
-}: {
-  flight: Flight;
-  x: number;
-  y: number;
-  allZones: Record<string, Zone[]>;
-  current: { agency: string; pos: BoardPos } | undefined;
-  onPick: (agency: string, zone: string, slot: string | null) => void;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("mousedown", away);
-    window.addEventListener("keydown", key);
-    window.addEventListener("resize", onClose);
-    return () => {
-      window.removeEventListener("mousedown", away);
-      window.removeEventListener("keydown", key);
-      window.removeEventListener("resize", onClose);
-    };
-  }, [onClose]);
-
-  const groups = sendTargets(allZones);
-  const width = 300;
-  const left = Math.min(x, window.innerWidth - width - 8);
-  const top = Math.min(y, window.innerHeight - 120);
-  return (
-    <div
-      ref={ref}
-      role="menu"
-      className="fixed z-50 overflow-y-auto rounded-[2px] border border-zinc-700 border-l-4 border-l-gold bg-zinc-900 py-1.5"
-      style={{ left, top, width, maxHeight: Math.max(160, window.innerHeight - top - 8) }}
-    >
-      <p className="kicker px-3 pb-1.5 text-[10px] text-gold">Enviar {flight.vars.corto || flight.callsign} a…</p>
-      {groups.map((g) => (
-        <div key={g.agency} className="border-t border-zinc-800 py-1">
-          <p className="kicker px-3 py-1 text-[10px] text-zinc-500">
-            {g.agency} · {g.name}
-          </p>
-          {g.items.map((it) => {
-            const here =
-              current?.agency === g.agency && current.pos.zone === it.zone && (current.pos.slot ?? null) === it.slot;
-            return (
-              <button
-                key={`${it.zone}|${it.slot ?? ""}`}
-                type="button"
-                role="menuitem"
-                disabled={here}
-                onClick={() => onPick(g.agency, it.zone, it.slot)}
-                className="block w-full px-3 py-1 text-left text-[13px] text-zinc-200 hover:bg-gold/15 hover:text-zinc-50 disabled:cursor-default disabled:text-gold disabled:hover:bg-transparent"
-              >
-                {here ? "● " : ""}
-                {it.label}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
 }

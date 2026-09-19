@@ -34,7 +34,9 @@ export async function POST(req: Request, { params }: Ctx) {
     db.delete(flights).where(eq(flights.sessionId, sid)),
     db
       .update(sessions)
-      .set({ vars: mission.vars, ...(mission.planOrder ? { planOrder: mission.planOrder } : {}), startedAt: null, pauses: [], boardState: {}, updatedAt: sql`now()`, contentAt: sql`now()` })
+      .set({
+        vars: mission.vars,
+        flightsBase: mission.flights.map((f) => ({ callsign: f.callsign, vars: f.vars })), ...(mission.planOrder ? { planOrder: mission.planOrder } : {}), ...(mission.varOrder ? { varOrder: mission.varOrder } : {}), startedAt: null, pauses: [], boardState: {}, updatedAt: sql`now()`, contentAt: sql`now()` })
       .where(eq(sessions.id, sid)),
     ...missionInserts(db, sid, mission),
   ]);

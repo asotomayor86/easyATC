@@ -14,6 +14,8 @@ export interface Session {
   board: Board;
   /** Orden de las variables en el plan de vuelo impreso; las que no están, no salen. */
   planOrder: Record<string, number>;
+  /** Orden en que se listan las variables al configurarlas; manda sobre el número del plan. */
+  varOrder: string[];
 }
 
 export interface Flight {
@@ -21,6 +23,12 @@ export interface Flight {
   callsign: string;
   idx: number;
   vars: Vars;
+  /** Vuelo del que se desprendió, si nació de una división. */
+  parentId?: string | null;
+  createdBy?: string | null;
+  /** Indicativo que absorbió y cuándo, si hubo una combinación. */
+  mergedFrom?: string | null;
+  mergedAt?: string | null;
 }
 
 export interface Step {

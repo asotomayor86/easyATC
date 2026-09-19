@@ -7,6 +7,8 @@ import { flushSync } from "react-dom";
 import { AgencyChips } from "@/components/AgencyChips";
 import { BoardStrip } from "@/components/BoardStrip";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
+import type { Move } from "@/components/FlightMenu";
+import { SplitDialog } from "@/components/SplitDialog";
 import { Rails } from "@/components/Rails";
 import { StatusCounts } from "@/components/StatusCounts";
 import { StepRow, wallTime, type SetStatus } from "@/components/StepRow";
@@ -274,8 +276,8 @@ export default function ControllerPage() {
 
   const { begin: beginBoard, settle: settleBoard, fail: failBoard } = boardOv;
   const moveFlight = useCallback(
-    async (agency: string, flightId: string, zone: string, slot: string | null) => {
-      const pos: BoardPos = { zone, slot, at: serverNow() };
+    async (agency: string, flightId: string, zone: string, slot: string | null, at?: number) => {
+      const pos: BoardPos = { zone, slot, at: at ?? serverNow() };
       const key = `${agency}|${flightId}`;
       const entry = beginBoard(key, pos);
       try {
@@ -295,6 +297,50 @@ export default function ControllerPage() {
     },
     [code, poll, beginBoard, settleBoard, failBoard, serverNow],
   );
+
+  /** Varios movimientos seguidos: enviar a un hueco ocupado intercambia los dos vuelos. */
+  const applyMoves = useCallback(
+    async (moves: Move[]) => {
+      for (const m of moves) await moveFlight(m.agency, m.flightId, m.zone, m.slot, m.at);
+    },
+    [moveFlight],
+  );
+
+  // --- Dividir, combinar y restaurar vuelos ---
+  const [splitting, setSplitting] = useState<{ flight: Flight; agency: string } | null>(null);
+  const flightAction = useCallback(
+    async (path: string, body: Record<string, unknown>) => {
+      try {
+        await api(`/api/s/${code}/flights/${path}`, "POST", { ...body, role: roleRef.current ?? "C1" });
+        await reload();
+        poll();
+      } catch {
+        setOffline(true);
+      }
+    },
+    [code, reload, poll],
+  );
+  const onMerge = useCallback(
+    (from: Flight, into: Flight) =>
+      setConfirm({
+        title: "Combinar vuelos",
+        message:
+          `Vas a combinar ${from.callsign} con ${into.callsign}. El vuelo resultante conserva el plan de vuelo de ` +
+          `${into.callsign}: sus variables, su colocación en los tableros y su color. ${from.callsign} desaparece del ejercicio.`,
+        confirmLabel: "Combinar",
+        onConfirm: () => flightAction("merge", { fromId: from.id, intoId: into.id, at: new Date(serverNow()).toISOString() }),
+      }),
+    [flightAction, serverNow],
+  );
+  const restoreFlights = () =>
+    setConfirm({
+      title: "Restaurar vuelos",
+      message:
+        "Vuelve al reparto de vuelos original: quita los nacidos de una división y recrea los que se absorbieron, con " +
+        "sus variables originales. Las marcas y los textos no se tocan.",
+      confirmLabel: "Restaurar",
+      onConfirm: () => flightAction("restore", {}),
+    });
 
   function reset() {
     setConfirm({
@@ -614,7 +660,7 @@ export default function ControllerPage() {
               <HeaderButton onClick={reset} tone="ko">
                 Reset
               </HeaderButton>
-              <Menu code={code} railsOpen={railsOpen} onToggleRails={toggleRails} />
+              <Menu code={code} railsOpen={railsOpen} onToggleRails={toggleRails} onRestoreFlights={restoreFlights} />
             </div>
           </div>
 
@@ -666,7 +712,12 @@ export default function ControllerPage() {
                 layout={layouts[g.agency] ?? EMPTY_LAYOUT}
                 onMoveFlight={moveFlight}
                 allZones={data.session.board?.zonas ?? EMPTY_BOARD_ZONES}
+                layouts={layouts}
+                agencyStates={agencyStates}
                 current={currentPos}
+                onMoves={applyMoves}
+                onSplit={(f) => setSplitting({ flight: f, agency: g.agency })}
+                onMerge={onMerge}
                 expanded={expanded}
                 planOrder={data.session.planOrder}
                 checklistOnly={checklistView.has(g.agency)}
@@ -680,6 +731,20 @@ export default function ControllerPage() {
         </div>
         <SideButton dir="next" target={groups[current + 1]} onClick={() => goTo(current + 1)} />
       </div>
+
+      {splitting && (
+        <SplitDialog
+          flight={splitting.flight}
+          flights={data.flights}
+          agencyName={agencyName(splitting.agency)}
+          onCancel={() => setSplitting(null)}
+          onSplit={(nombre) => {
+            const { flight, agency } = splitting;
+            setSplitting(null);
+            flightAction("split", { flightId: flight.id, nombre, agency, at: new Date(serverNow()).toISOString() });
+          }}
+        />
+      )}
 
       <ConfirmDialog request={confirm} onClose={closeConfirm} />
     </div>
@@ -702,7 +767,12 @@ const AgencySection = memo(function AgencySection({
   layout,
   onMoveFlight,
   allZones,
+  layouts,
+  agencyStates,
   current,
+  onMoves,
+  onSplit,
+  onMerge,
   expanded,
   planOrder,
   onToggleFold,
@@ -724,7 +794,12 @@ const AgencySection = memo(function AgencySection({
   colores: Board["colores"];
   layout: AgencyLayout;
   allZones: Record<string, Zone[]>;
+  layouts: Record<string, AgencyLayout>;
+  agencyStates: Map<string, AgencyStateName>;
   current: Record<string, { agency: string; pos: BoardPos }>;
+  onMoves: (moves: Move[]) => void;
+  onSplit: (flight: Flight) => void;
+  onMerge: (from: Flight, into: Flight) => void;
   onMoveFlight: (agency: string, flightId: string, zone: string, slot: string | null) => void;
   /** Grupos de vuelo desplegados; los demás están plegados. */
   expanded: Set<string>;
@@ -775,9 +850,15 @@ const AgencySection = memo(function AgencySection({
         planOrder={planOrder}
         layout={layout}
         onMove={(flightId, zone, slot) => onMoveFlight(group.agency, flightId, zone, slot)}
+        agency={group.agency}
+        formatTime={formatTime}
         allZones={allZones}
+        layouts={layouts}
+        agencyStates={agencyStates}
         current={current}
-        onSend={onMoveFlight}
+        onMoves={onMoves}
+        onSplit={onSplit}
+        onMerge={onMerge}
       />
 
       <div className="divide-y divide-zinc-800">
@@ -1092,7 +1173,17 @@ function RolePicker({
   );
 }
 
-function Menu({ code, railsOpen, onToggleRails }: { code: string; railsOpen: boolean; onToggleRails: () => void }) {
+function Menu({
+  code,
+  railsOpen,
+  onToggleRails,
+  onRestoreFlights,
+}: {
+  code: string;
+  railsOpen: boolean;
+  onToggleRails: () => void;
+  onRestoreFlights: () => void;
+}) {
   const item = "block w-full px-3 py-2.5 text-left hover:bg-zinc-800";
   return (
     <details className="relative">
@@ -1102,6 +1193,9 @@ function Menu({ code, railsOpen, onToggleRails }: { code: string; railsOpen: boo
       <div className="absolute right-0 z-30 mt-1 w-44 rounded-[2px] border border-zinc-700 bg-zinc-900 text-[13px]">
         <button type="button" onClick={onToggleRails} className={item}>
           {railsOpen ? "Ocultar rieles" : "Mostrar rieles"}
+        </button>
+        <button type="button" onClick={onRestoreFlights} className={item}>
+          Restaurar vuelos…
         </button>
         <Link href={`/s/${code}/setup`} className={item}>
           Variables

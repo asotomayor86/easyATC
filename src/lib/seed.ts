@@ -43,7 +43,15 @@ export async function createSession(db: DB, name: string, fixedCode?: string, fr
     const code = fixedCode ?? randomCode();
     [row] = await db
       .insert(sessions)
-      .values({ code, name, vars: mission.vars, board: board.value, planOrder: mission.planOrder ?? {} })
+      .values({
+        code,
+        name,
+        vars: mission.vars,
+        board: board.value,
+        planOrder: mission.planOrder ?? {},
+        varOrder: mission.varOrder ?? [],
+        flightsBase: mission.flights.map((f) => ({ callsign: f.callsign, vars: f.vars })),
+      })
       .onConflictDoNothing()
       .returning({ id: sessions.id, code: sessions.code });
     if (fixedCode) break;

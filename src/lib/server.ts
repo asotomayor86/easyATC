@@ -48,6 +48,18 @@ export function cleanPlanOrder(input: unknown): Record<string, number> | null {
   return out;
 }
 
+/**
+ * Lista ordenada de variables, sin repetidos ni claves raras. Cada entrada
+ * lleva delante su sección («s:» global, «f:» de vuelo), porque una misma
+ * variable puede existir en las dos.
+ */
+export function cleanVarOrder(input: unknown): string[] | null {
+  if (!Array.isArray(input)) return null;
+  const out: string[] = [];
+  for (const k of input) if (typeof k === "string" && /^[sf]:[a-z0-9_]{1,40}$/.test(k) && !out.includes(k)) out.push(k);
+  return out.slice(0, 1000);
+}
+
 /** Deja solo pares clave → texto, con claves razonables. */
 export function cleanVars(input: unknown): Record<string, string> | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;

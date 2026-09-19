@@ -17,6 +17,8 @@ export interface MissionFile {
   vuelos: Record<string, string>[];
   /** Orden de las variables en el plan de vuelo impreso. */
   orden_plan: Record<string, number>;
+  /** Orden en que se listan las variables al configurarlas. */
+  orden_variables: string[];
   pasos: GuionPaso[];
   agencias: typeof GUION.agencias;
 }
@@ -26,6 +28,8 @@ export interface ParsedMission {
   vars: Record<string, string>;
   /** Solo si el archivo lo trae: uno antiguo no debe borrar el orden que ya hay. */
   planOrder?: Record<string, number>;
+  /** Igual: un archivo antiguo no debe borrar el orden que ya hay. */
+  varOrder?: string[];
   flights: { callsign: string; vars: Record<string, string> }[];
   steps: {
     idx: number;
@@ -51,6 +55,7 @@ export function toMissionFile(session: Session, flights: Flight[], steps: Step[]
     sesion: { ...session.vars },
     vuelos: [...flights].sort((a, b) => a.idx - b.idx).map((f) => ({ ...f.vars })),
     orden_plan: { ...(session.planOrder ?? {}) },
+    orden_variables: [...(session.varOrder ?? [])],
     pasos: [...steps]
       .sort((a, b) => a.idx - b.idx)
       .map((s, i) => ({
@@ -143,6 +148,14 @@ export function parseMissionFile(input: unknown): { ok: true; mission: ParsedMis
     for (const [k, v] of Object.entries(input.orden_plan)) {
       const n = Number(v);
       if (VAR_KEY.test(k) && Number.isInteger(n) && n >= 1 && n <= 500) mission.planOrder[k] = n;
+    }
+  }
+  if (Array.isArray(input.orden_variables)) {
+    mission.varOrder = [];
+    for (const k of input.orden_variables) {
+      if (typeof k === "string" && /^[sf]:/.test(k) && VAR_KEY.test(k.slice(2)) && !mission.varOrder.includes(k)) {
+        mission.varOrder.push(k);
+      }
     }
   }
   return { ok: true, mission };

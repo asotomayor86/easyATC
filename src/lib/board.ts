@@ -374,36 +374,3 @@ export function normalizeBoard(input: unknown): Board {
   const colores = validateColors(b.colores ?? []);
   return { zonas, colores: colores.ok ? colores.value : [] };
 }
-
-export interface SendTarget {
-  zone: string;
-  slot: string | null;
-  label: string;
-}
-
-/**
- * Todas las posiciones a las que se puede enviar un vuelo, agrupadas por
- * agencia en orden de fase: cada zona y, en los stacks, cada celda activa.
- * Las entradas heredadas no aparecen, porque no se editan.
- */
-export function sendTargets(zonas: Record<string, Zone[]>) {
-  return AGENCY_LIST.map((a) => {
-    const { inherited } = linksOf(a.id, zonas);
-    const items: SendTarget[] = [];
-    for (const z of zonas[a.id] ?? []) {
-      if (z.tipo === "entrada" && inherited[z.id]) continue;
-      const name = z.nombre || z.id;
-      if (z.tipo === "stack") {
-        const off = new Set(z.excluidos ?? []);
-        for (const b of z.bloques ?? [])
-          for (const p of z.puntos ?? []) {
-            const cell = stackCell(p, b);
-            if (!off.has(cell)) items.push({ zone: z.id, slot: cell, label: `${name} · ${p} · ${b}` });
-          }
-      } else {
-        items.push({ zone: z.id, slot: null, label: name });
-      }
-    }
-    return { agency: a.id, name: a.nombre, items };
-  }).filter((g) => g.items.length > 0);
-}
