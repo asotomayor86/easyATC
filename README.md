@@ -6,7 +6,9 @@ Seguimiento en vivo de un ejercicio de control aéreo en DCS. Tres controladores
 Next.js 15 · Tailwind · Neon Postgres · Drizzle. Sin cuentas: quien tenga el
 código de sesión, entra.
 
-Historia, arquitectura y operación: [docs/SESION-2026-09-18.md](docs/SESION-2026-09-18.md).
+Historia, arquitectura y operación:
+[docs/SESION-2026-09-18.md](docs/SESION-2026-09-18.md) (base de la aplicación) y
+[docs/SESION-2026-09-19.md](docs/SESION-2026-09-19.md) (tablero y plan de vuelo).
 
 ## Puesta en marcha
 
