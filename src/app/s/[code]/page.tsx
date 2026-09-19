@@ -5,11 +5,13 @@ import { useParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { AgencyChips } from "@/components/AgencyChips";
+import { BoardStrip } from "@/components/BoardStrip";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { Rails } from "@/components/Rails";
 import { StatusCounts } from "@/components/StatusCounts";
 import { StepRow, wallTime, type SetStatus } from "@/components/StepRow";
 import { isPaused, missionTime, parseClock, type Pause } from "@/lib/mission";
+import { layoutAgency, type AgencyLayout, type Board, type BoardPos, type BoardState, type Zone } from "@/lib/board";
 import { api, clientId, useSessionData } from "@/lib/client";
 import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
 import { overlay, useOverrides } from "@/lib/optimistic";
@@ -37,6 +39,8 @@ import {
 } from "@/lib/types";
 
 const POLL_MS = 2500;
+const EMPTY_ZONES: Zone[] = [];
+const EMPTY_LAYOUT: AgencyLayout = { slots: {}, inherited: {} };
 
 /** scrollLeft que deja la columna `i` centrada en el carrusel. */
 function columnTarget(track: HTMLElement, i: number) {
@@ -91,6 +95,8 @@ export default function ControllerPage() {
   const [serverAgencies, setServerAgencies] = useState<Map<string, AgencyStateName>>(new Map());
   const markOv = useOverrides<Mark | null>();
   const agencyOv = useOverrides<AgencyStateName>();
+  const [serverBoard, setServerBoard] = useState<BoardState>({});
+  const boardOv = useOverrides<BoardPos>();
   const [presence, setPresence] = useState<Record<Role, number>>({ C1: 0, C2: 0, C3: 0 });
   const [offline, setOffline] = useState(false);
   const [synced, setSynced] = useState(false);
@@ -110,6 +116,7 @@ export default function ControllerPage() {
   roleRef.current = role;
   const { prune: pruneMarks } = markOv;
   const { prune: pruneAgencies } = agencyOv;
+  const { prune: pruneBoard } = boardOv;
 
   const poll = useCallback(async () => {
     const started = Date.now();
@@ -137,6 +144,7 @@ export default function ControllerPage() {
         setServerAgencies(new Map(st.agencies.map((a) => [a.agency, a.state])));
         setStartedAt(st.startedAt);
         setPauses(st.pauses ?? []);
+        setServerBoard(st.boardState ?? {});
       }
       if (lastContent.current && st.contentAt !== lastContent.current) reload();
       lastContent.current = st.contentAt;
@@ -146,10 +154,11 @@ export default function ControllerPage() {
       );
       pruneMarks(started);
       pruneAgencies(started);
+      pruneBoard(started);
     } catch {
       setOffline(true);
     }
-  }, [code, reload, pruneMarks, pruneAgencies]);
+  }, [code, reload, pruneMarks, pruneAgencies, pruneBoard]);
 
   useEffect(() => {
     poll();
@@ -172,6 +181,16 @@ export default function ControllerPage() {
 
   const marks = useMemo(() => overlay(serverMarks, markOv.map), [serverMarks, markOv.map]);
   const agencyStates = useMemo(() => overlay(serverAgencies, agencyOv.map), [serverAgencies, agencyOv.map]);
+  // Posiciones en el tablero: las del servidor más los movimientos aún sin confirmar.
+  const boardState = useMemo(() => {
+    if (boardOv.map.size === 0) return serverBoard;
+    const out: BoardState = { ...serverBoard };
+    for (const [key, p] of boardOv.map) {
+      const [agency, flightId] = key.split("|");
+      out[agency] = { ...out[agency], [flightId]: p.value };
+    }
+    return out;
+  }, [serverBoard, boardOv.map]);
 
   // --- Confirmación para tocar lo que no es tuyo ---
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
@@ -244,6 +263,30 @@ export default function ControllerPage() {
     [agencyStates, applyAgency],
   );
 
+  const { begin: beginBoard, settle: settleBoard, fail: failBoard } = boardOv;
+  const moveFlight = useCallback(
+    async (agency: string, flightId: string, zone: string, slot: string | null) => {
+      const pos: BoardPos = { zone, slot, at: serverNow() };
+      const key = `${agency}|${flightId}`;
+      const entry = beginBoard(key, pos);
+      try {
+        await api(`/api/s/${code}/board/move`, "POST", {
+          agency,
+          flightId,
+          zone,
+          slot,
+          at: new Date(pos.at).toISOString(),
+        });
+        settleBoard(key, entry);
+        poll();
+      } catch {
+        failBoard(key, entry);
+        setOffline(true);
+      }
+    },
+    [code, poll, beginBoard, settleBoard, failBoard, serverNow],
+  );
+
   function reset() {
     setConfirm({
       message: "¿Borrar TODAS las marcas y cerrar todas las agencias? Las variables y los textos no se tocan.",
@@ -252,6 +295,7 @@ export default function ControllerPage() {
         await api(`/api/s/${code}/reset`, "POST");
         markOv.clear();
         agencyOv.clear();
+        boardOv.clear();
         poll();
       },
     });
@@ -387,46 +431,29 @@ export default function ControllerPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [goTo]);
 
-  // --- Grupos de vuelo plegados, recordados en este navegador ---
-  const foldStore = `easyatc:fold:${code}`;
-  const [folded, setFolded] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    try {
-      setFolded(new Set(JSON.parse(localStorage.getItem(foldStore) ?? "[]")));
-    } catch {}
-  }, [foldStore]);
-  const updateFolded = useCallback(
-    (fn: (s: Set<string>) => Set<string>) =>
-      setFolded((prev) => {
-        const next = fn(prev);
-        try {
-          localStorage.setItem(foldStore, JSON.stringify([...next]));
-        } catch {}
-        return next;
-      }),
-    [foldStore],
-  );
+  // --- Grupos de vuelo: siempre empiezan plegados; aquí solo se guardan los desplegados ---
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleFold = useCallback(
     (key: string) =>
-      updateFolded((s) => {
+      setExpanded((s) => {
         const n = new Set(s);
         if (n.has(key)) n.delete(key);
         else n.add(key);
         return n;
       }),
-    [updateFolded],
+    [],
   );
   const foldMany = useCallback(
     (keys: string[], fold: boolean) =>
-      updateFolded((s) => {
+      setExpanded((s) => {
         const n = new Set(s);
         for (const k of keys) {
-          if (fold) n.add(k);
-          else n.delete(k);
+          if (fold) n.delete(k);
+          else n.add(k);
         }
         return n;
       }),
-    [updateFolded],
+    [],
   );
   // --- Vista por agencia: COMPLETAS o solo CHECKLIST, recordada en el navegador ---
   const viewStore = `easyatc:view:${code}`;
@@ -475,6 +502,15 @@ export default function ControllerPage() {
   );
 
   // --- Derivados ---
+  // Colocación de los vuelos en el tablero de cada agencia (las entradas heredan de las salidas).
+  const layouts = useMemo(() => {
+    const zonas = data?.session.board?.zonas ?? {};
+    const ids = data?.flights.map((f) => f.id) ?? [];
+    return Object.fromEntries(Object.keys(zonas).map((a) => [a, layoutAgency(a, zonas, boardState, ids)])) as Record<
+      string,
+      AgencyLayout
+    >;
+  }, [data, boardState]);
   const rows = useMemo(() => (data ? buildRows(data.steps, data.flights) : []), [data]);
   const groups = useMemo(() => groupByAgency(rows), [rows]);
   useMemo(() => {
@@ -614,7 +650,13 @@ export default function ControllerPage() {
                 highlight={highlight}
                 onSet={onSet}
                 onSetState={onAgencySet}
-                folded={folded}
+                zones={data.session.board?.zonas?.[g.agency] ?? EMPTY_ZONES}
+                flights={data.flights}
+                colores={data.session.board?.colores}
+                layout={layouts[g.agency] ?? EMPTY_LAYOUT}
+                onMoveFlight={moveFlight}
+                expanded={expanded}
+                planOrder={data.session.planOrder}
                 checklistOnly={checklistView.has(g.agency)}
                 onSetView={setAgencyView}
                 onToggleFold={toggleFold}
@@ -642,7 +684,13 @@ const AgencySection = memo(function AgencySection({
   highlight,
   onSet,
   onSetState,
-  folded,
+  zones,
+  flights,
+  colores,
+  layout,
+  onMoveFlight,
+  expanded,
+  planOrder,
   onToggleFold,
   onFoldMany,
   checklistOnly,
@@ -657,7 +705,15 @@ const AgencySection = memo(function AgencySection({
   highlight: string | null;
   onSet: SetStatus;
   onSetState: (agency: string, state: AgencyStateName) => void;
-  folded: Set<string>;
+  zones: Zone[];
+  flights: Flight[];
+  colores: Board["colores"];
+  layout: AgencyLayout;
+  onMoveFlight: (agency: string, flightId: string, zone: string, slot: string | null) => void;
+  /** Grupos de vuelo desplegados; los demás están plegados. */
+  expanded: Set<string>;
+  /** Variables del plan de vuelo (Variables → Plan) y su orden. */
+  planOrder: Record<string, number> | undefined;
   onToggleFold: (key: string) => void;
   onFoldMany: (keys: string[], fold: boolean) => void;
   checklistOnly: boolean;
@@ -695,10 +751,20 @@ const AgencySection = memo(function AgencySection({
         </div>
       </header>
 
+      <BoardStrip
+        zones={zones}
+        flights={flights}
+        colores={colores}
+        sessionVars={sessionVars}
+        planOrder={planOrder}
+        layout={layout}
+        onMove={(flightId, zone, slot) => onMoveFlight(group.agency, flightId, zone, slot)}
+      />
+
       <div className="divide-y divide-zinc-800">
         {flightGroups.map((fg) => {
           const key = foldKey(group.agency, fg.key);
-          const isFolded = folded.has(key);
+          const isFolded = !expanded.has(key);
           const p = progressOf(fg.rows, marks, () => true);
           return (
             <div key={fg.key}>
@@ -996,6 +1062,9 @@ function RolePicker({
         <Link href={`/s/${code}/guion`} className="kicker text-zinc-400 hover:text-gold">
           Guion
         </Link>
+        <Link href={`/s/${code}/tablero`} className="kicker text-zinc-400 hover:text-gold">
+          Tablero
+        </Link>
         <Link href="/" className="kicker text-zinc-500 hover:text-gold">
           Salir
         </Link>
@@ -1020,6 +1089,9 @@ function Menu({ code, railsOpen, onToggleRails }: { code: string; railsOpen: boo
         </Link>
         <Link href={`/s/${code}/guion`} className={item}>
           Guion
+        </Link>
+        <Link href={`/s/${code}/tablero`} className={item}>
+          Tablero
         </Link>
         <Link href="/" className={`${item} text-zinc-400`}>
           Salir

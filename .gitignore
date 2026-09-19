@@ -9,3 +9,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Base de datos local de npm run dev:local
+.pglite

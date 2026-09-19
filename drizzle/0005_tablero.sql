@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "board" jsonb DEFAULT '{"zonas":{}}'::jsonb NOT NULL;

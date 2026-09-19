@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "plan_order" jsonb DEFAULT '{}'::jsonb NOT NULL;

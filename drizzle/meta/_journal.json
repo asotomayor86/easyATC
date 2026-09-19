@@ -36,6 +36,27 @@
       "when": 1789773966364,
       "tag": "0004_pausas",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789833144778,
+      "tag": "0005_tablero",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789834483596,
+      "tag": "0006_posiciones",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789837605054,
+      "tag": "0007_orden_plan",
+      "breakpoints": true
     }
   ]
 }

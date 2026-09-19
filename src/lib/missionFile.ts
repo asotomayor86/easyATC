@@ -15,6 +15,8 @@ export interface MissionFile {
   exportado?: { sesion: string; nombre: string; fecha: string };
   sesion: Record<string, string>;
   vuelos: Record<string, string>[];
+  /** Orden de las variables en el plan de vuelo impreso. */
+  orden_plan: Record<string, number>;
   pasos: GuionPaso[];
   agencias: typeof GUION.agencias;
 }
@@ -22,6 +24,8 @@ export interface MissionFile {
 /** Lo que se guarda en la base a partir de un archivo válido. */
 export interface ParsedMission {
   vars: Record<string, string>;
+  /** Solo si el archivo lo trae: uno antiguo no debe borrar el orden que ya hay. */
+  planOrder?: Record<string, number>;
   flights: { callsign: string; vars: Record<string, string> }[];
   steps: {
     idx: number;
@@ -46,6 +50,7 @@ export function toMissionFile(session: Session, flights: Flight[], steps: Step[]
     exportado: { sesion: session.code, nombre: session.name, fecha: new Date().toISOString() },
     sesion: { ...session.vars },
     vuelos: [...flights].sort((a, b) => a.idx - b.idx).map((f) => ({ ...f.vars })),
+    orden_plan: { ...(session.planOrder ?? {}) },
     pasos: [...steps]
       .sort((a, b) => a.idx - b.idx)
       .map((s, i) => ({
@@ -132,5 +137,13 @@ export function parseMissionFile(input: unknown): { ok: true; mission: ParsedMis
   steps.sort((a, b) => a.order - b.order);
   const ordered = steps.map(({ order: _o, ...s }, i) => ({ ...s, idx: i }));
 
-  return { ok: true, mission: { vars: vars(input.sesion), flights, steps: ordered } };
+  const mission: ParsedMission = { vars: vars(input.sesion), flights, steps: ordered };
+  if (isObject(input.orden_plan)) {
+    mission.planOrder = {};
+    for (const [k, v] of Object.entries(input.orden_plan)) {
+      const n = Number(v);
+      if (VAR_KEY.test(k) && Number.isInteger(n) && n >= 1 && n <= 500) mission.planOrder[k] = n;
+    }
+  }
+  return { ok: true, mission };
 }

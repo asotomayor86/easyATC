@@ -84,7 +84,9 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
 
 - **`/`** — crea una sesión nueva (copia el guion completo) o entra con un código.
 - **`/s/CODIGO/setup`** — variables globales y de cada vuelo. Se guarda al salir
-  de cada campo.
+  de cada campo. La casilla **Plan** de cada variable fija su orden en el plan
+  de vuelo impreso: al pulsarla toma el siguiente número; al volver a pulsarla
+  se quita y las demás se renumeran. Sin número, la variable no se imprime.
 - **`/s/CODIGO/guion`** — textos de las transmisiones. Son plantillas: un
   cambio se aplica a los cuatro vuelos de esa sesión, y solo a esa sesión.
   Cada comunicación tiene «+ Añadir debajo» (crea una nueva con la misma
@@ -92,6 +94,18 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   Cada una tiene además un nombre resumen para la checklist y la casilla
   «Cuenta para rieles y estadísticas»: si se desmarca, desaparece de los
   rieles y de todos los recuentos (sigue en su agencia y se puede marcar).
+- **`/s/CODIGO/tablero`** — zonas de cada agencia para seguir los vuelos
+  durante el ejercicio: entradas, stacks (rejilla de puntos × bloques, p. ej.
+  Norte/Este × FL080/FL090/FL100, con celdas que se pueden desactivar),
+  secuencias (posiciones 1.º, 2.º…) y salidas. Una salida se enlaza con la
+  entrada de otra agencia («ROD.sal» → «TWR.ent»). Es **solo seguimiento
+  visual**: los textos de las comunicaciones salen siempre del plan publicado
+  (guion + variables). Se guarda solo, por agencia, e incluye el color de cada
+  vuelo. Se importa y exporta con el formato de `zonas.json`.
+  - En la vista del controlador, el tablero aparece bajo la cabecera de cada
+    agencia; los vuelos son pastillas que se arrastran (o se tocan y luego se
+    toca el destino). Las entradas enlazadas muestran, en el mismo orden, los
+    vuelos que la agencia anterior ha puesto en su salida, y no son editables.
 - **Exportar / Importar JSON** (en Guion y en Variables) — descarga o carga la
   misión completa (variables, vuelos y guion) en el formato de `guion.json`,
   con los campos `checklist` y `cuenta` en cada paso.
@@ -105,9 +119,9 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   - En la cabecera de cada agencia, COMPLETAS / CHECKLIST: con CHECKLIST cada
     fila muestra solo el nombre resumen de la comunicación.
   - Dentro de cada agencia, las transmisiones van agrupadas por vuelo (y las
-    dirigidas a todos, en su propio grupo). Cada grupo se pliega o despliega
-    pulsando su cabecera; los botones + y − de la agencia despliegan o pliegan
-    todos a la vez.
+    dirigidas a todos, en su propio grupo). Los grupos salen siempre plegados
+    al abrir la página; se despliegan pulsando su cabecera, y los botones + y −
+    de la agencia despliegan o pliegan todos a la vez.
   - Cada transmisión se marca como correcta (✓), con aviso (!), con error (✕)
     o no aplica (NA); pulsar el botón activo la devuelve a pendiente. Tocar algo de otro controlador pide
     confirmación.

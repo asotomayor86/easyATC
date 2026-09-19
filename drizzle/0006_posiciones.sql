@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "board_state" jsonb DEFAULT '{}'::jsonb NOT NULL;

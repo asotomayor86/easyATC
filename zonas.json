@@ -1,0 +1,539 @@
+{
+  "version": 1,
+  "tableros": [
+    {
+      "agencia": "AUT",
+      "nombre": "Senaki Autorizaciones",
+      "controlador": "C1",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": null
+        },
+        {
+          "id": "plan_n",
+          "nombre": "Plan punto Norte",
+          "tipo": "stack",
+          "ordenado": true,
+          "bloques": [
+            {
+              "id": "n100",
+              "etiqueta": "FL100",
+              "escribe": {
+                "entrada_bs": "Norte",
+                "nivel": "uno cero cero"
+              }
+            },
+            {
+              "id": "n090",
+              "etiqueta": "FL090",
+              "escribe": {
+                "entrada_bs": "Norte",
+                "nivel": "cero nueve cero"
+              }
+            }
+          ]
+        },
+        {
+          "id": "plan_e",
+          "nombre": "Plan punto Este",
+          "tipo": "stack",
+          "ordenado": true,
+          "bloques": [
+            {
+              "id": "e080",
+              "etiqueta": "FL080",
+              "escribe": {
+                "entrada_bs": "Este",
+                "nivel": "cero ocho cero"
+              }
+            },
+            {
+              "id": "e070",
+              "etiqueta": "FL070",
+              "escribe": {
+                "entrada_bs": "Este",
+                "nivel": "cero siete cero"
+              }
+            }
+          ]
+        },
+        {
+          "id": "sal",
+          "nombre": "Paso a Rodadura",
+          "tipo": "salida",
+          "destino": "ROD.ent",
+          "escribe_orden": null
+        }
+      ]
+    },
+    {
+      "agencia": "ROD",
+      "nombre": "Senaki Rodadura",
+      "controlador": "C2",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "AUT.sal"
+        },
+        {
+          "id": "eor",
+          "nombre": "EOR rampa 1",
+          "tipo": "stack",
+          "ordenado": false,
+          "bloques": [
+            {
+              "id": "a",
+              "etiqueta": "EOR Alpha",
+              "escribe": {
+                "eor": "Alpha"
+              }
+            },
+            {
+              "id": "b",
+              "etiqueta": "EOR Bravo",
+              "escribe": {
+                "eor": "Bravo"
+              }
+            },
+            {
+              "id": "c",
+              "etiqueta": "EOR Charlie",
+              "escribe": {
+                "eor": "Charlie"
+              }
+            },
+            {
+              "id": "d",
+              "etiqueta": "EOR Delta",
+              "escribe": {
+                "eor": "Delta"
+              }
+            }
+          ]
+        },
+        {
+          "id": "sal",
+          "nombre": "Orden de rodaje",
+          "tipo": "salida",
+          "destino": "TWR.ent",
+          "computa": "precede"
+        }
+      ]
+    },
+    {
+      "agencia": "TWR",
+      "nombre": "Senaki Torre",
+      "controlador": "C1",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "ROD.sal"
+        },
+        {
+          "id": "sal",
+          "nombre": "Orden de despegue",
+          "tipo": "salida",
+          "destino": "DEP.ent"
+        }
+      ]
+    },
+    {
+      "agencia": "DEP",
+      "nombre": "Senaki Salidas",
+      "controlador": "C2",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "TWR.sal"
+        },
+        {
+          "id": "sal",
+          "nombre": "Entrega a Black Sea",
+          "tipo": "salida",
+          "destino": "BS.ent"
+        }
+      ]
+    },
+    {
+      "agencia": "BS",
+      "nombre": "Black Sea",
+      "controlador": "C3",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "DEP.sal"
+        },
+        {
+          "id": "norte",
+          "nombre": "Punto Norte",
+          "tipo": "stack",
+          "ordenado": true,
+          "bloques": [
+            {
+              "id": "n110",
+              "etiqueta": "FL110",
+              "escribe": {
+                "entrada_bs": "Norte",
+                "nivel": "uno uno cero",
+                "ataque": "330",
+                "salida_bs": "Autorizado salida por el punto Norte, no supere 6.000 pies hasta abandonar el polígono",
+                "salida_bs_corto": "Salida punto Norte, máximo 6.000 pies",
+                "entrada_ugks": "Zeni"
+              }
+            },
+            {
+              "id": "n100",
+              "etiqueta": "FL100",
+              "escribe": {
+                "entrada_bs": "Norte",
+                "nivel": "uno cero cero",
+                "ataque": "330",
+                "salida_bs": "Autorizado salida por el punto Norte, no supere 6.000 pies hasta abandonar el polígono",
+                "salida_bs_corto": "Salida punto Norte, máximo 6.000 pies",
+                "entrada_ugks": "Zeni"
+              }
+            },
+            {
+              "id": "n090",
+              "etiqueta": "FL090",
+              "escribe": {
+                "entrada_bs": "Norte",
+                "nivel": "cero nueve cero",
+                "ataque": "330",
+                "salida_bs": "Autorizado salida por el punto Norte, no supere 6.000 pies hasta abandonar el polígono",
+                "salida_bs_corto": "Salida punto Norte, máximo 6.000 pies",
+                "entrada_ugks": "Zeni"
+              }
+            }
+          ]
+        },
+        {
+          "id": "este",
+          "nombre": "Punto Este",
+          "tipo": "stack",
+          "ordenado": true,
+          "bloques": [
+            {
+              "id": "e080",
+              "etiqueta": "FL080",
+              "escribe": {
+                "entrada_bs": "Este",
+                "nivel": "cero ocho cero",
+                "ataque": "210",
+                "salida_bs": "Autorizado salida por el punto Este, mantenga arco DME seis coma siete del Tacán uno seis X hasta el punto",
+                "salida_bs_corto": "Arco seis coma siete al punto Este",
+                "entrada_ugks": "River West"
+              }
+            },
+            {
+              "id": "e070",
+              "etiqueta": "FL070",
+              "escribe": {
+                "entrada_bs": "Este",
+                "nivel": "cero siete cero",
+                "ataque": "210",
+                "salida_bs": "Autorizado salida por el punto Este, mantenga arco DME seis coma siete del Tacán uno seis X hasta el punto",
+                "salida_bs_corto": "Arco seis coma siete al punto Este",
+                "entrada_ugks": "River West"
+              }
+            },
+            {
+              "id": "e060",
+              "etiqueta": "FL060",
+              "escribe": {
+                "entrada_bs": "Este",
+                "nivel": "cero seis cero",
+                "ataque": "210",
+                "salida_bs": "Autorizado salida por el punto Este, mantenga arco DME seis coma siete del Tacán uno seis X hasta el punto",
+                "salida_bs_corto": "Arco seis coma siete al punto Este",
+                "entrada_ugks": "River West"
+              }
+            }
+          ]
+        },
+        {
+          "id": "ataque",
+          "nombre": "Ataque",
+          "tipo": "secuencia",
+          "posiciones": [
+            {
+              "escribe": {
+                "push": "cuatro ocho"
+              }
+            },
+            {
+              "escribe": {
+                "push": "cinco dos"
+              }
+            },
+            {
+              "escribe": {
+                "push": "cinco seis"
+              }
+            },
+            {
+              "escribe": {
+                "push": "cero cero"
+              }
+            }
+          ]
+        },
+        {
+          "id": "sal",
+          "nombre": "Salida del polígono",
+          "tipo": "salida",
+          "destino": "APP.ent"
+        }
+      ]
+    },
+    {
+      "agencia": "APP",
+      "nombre": "Senaki Aproximación",
+      "controlador": "C1",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "BS.sal"
+        },
+        {
+          "id": "zeni",
+          "nombre": "Punto Zeni",
+          "tipo": "stack",
+          "ordenado": true,
+          "bloques": [
+            {
+              "id": "z100",
+              "etiqueta": "FL100",
+              "escribe": {
+                "radial_espera": "dos nueve nueve",
+                "millas_espera": "dieciocho",
+                "nivel_espera": "uno cero cero"
+              }
+            },
+            {
+              "id": "z090",
+              "etiqueta": "FL090",
+              "escribe": {
+                "radial_espera": "dos nueve siete",
+                "millas_espera": "diecisiete",
+                "nivel_espera": "cero nueve cero"
+              }
+            },
+            {
+              "id": "z080",
+              "etiqueta": "FL080",
+              "escribe": {
+                "radial_espera": "dos nueve cinco",
+                "millas_espera": "dieciséis",
+                "nivel_espera": "cero ocho cero"
+              }
+            },
+            {
+              "id": "z070",
+              "etiqueta": "FL070",
+              "escribe": {
+                "radial_espera": "dos nueve tres",
+                "millas_espera": "quince",
+                "nivel_espera": "cero siete cero"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rw",
+          "nombre": "Punto River West",
+          "tipo": "stack",
+          "ordenado": true,
+          "bloques": [
+            {
+              "id": "w100",
+              "etiqueta": "FL100",
+              "escribe": {
+                "radial_espera": "dos tres cinco",
+                "millas_espera": "dieciocho",
+                "nivel_espera": "uno cero cero"
+              }
+            },
+            {
+              "id": "w090",
+              "etiqueta": "FL090",
+              "escribe": {
+                "radial_espera": "dos tres tres",
+                "millas_espera": "diecisiete",
+                "nivel_espera": "cero nueve cero"
+              }
+            },
+            {
+              "id": "w080",
+              "etiqueta": "FL080",
+              "escribe": {
+                "radial_espera": "dos tres uno",
+                "millas_espera": "dieciséis",
+                "nivel_espera": "cero ocho cero"
+              }
+            },
+            {
+              "id": "w070",
+              "etiqueta": "FL070",
+              "escribe": {
+                "radial_espera": "dos dos nueve",
+                "millas_espera": "quince",
+                "nivel_espera": "cero siete cero"
+              }
+            }
+          ]
+        },
+        {
+          "id": "aprox",
+          "nombre": "Aproximación",
+          "tipo": "secuencia",
+          "posiciones": [
+            {
+              "escribe": {
+                "numero": "uno"
+              }
+            },
+            {
+              "escribe": {
+                "numero": "dos"
+              }
+            },
+            {
+              "escribe": {
+                "numero": "tres"
+              }
+            },
+            {
+              "escribe": {
+                "numero": "cuatro"
+              }
+            }
+          ]
+        },
+        {
+          "id": "sal",
+          "nombre": "Paso a Torre",
+          "tipo": "salida",
+          "destino": "TWR2.ent"
+        }
+      ]
+    },
+    {
+      "agencia": "TWR2",
+      "nombre": "Senaki Torre (llegada)",
+      "controlador": "C2",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "APP.sal"
+        },
+        {
+          "id": "sal",
+          "nombre": "Orden de aterrizaje",
+          "tipo": "salida",
+          "destino": "ROD2.ent"
+        }
+      ]
+    },
+    {
+      "agencia": "ROD2",
+      "nombre": "Senaki Rodadura (llegada)",
+      "controlador": "C1",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "TWR2.sal"
+        },
+        {
+          "id": "sal",
+          "nombre": "Orden a plataforma",
+          "tipo": "salida",
+          "destino": "AUT2.ent"
+        }
+      ]
+    },
+    {
+      "agencia": "AUT2",
+      "nombre": "Senaki Autorizaciones (cierre)",
+      "controlador": "C2",
+      "zonas": [
+        {
+          "id": "ent",
+          "nombre": "Entrada",
+          "tipo": "entrada",
+          "origen": "ROD2.sal"
+        },
+        {
+          "id": "sal",
+          "nombre": "Cerrado",
+          "tipo": "salida",
+          "destino": null
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "estaticas": [
+      "cs",
+      "corto",
+      "parking",
+      "squawk",
+      "ramrod",
+      "desafio",
+      "respuesta",
+      "desafio_piloto",
+      "respuesta_piloto",
+      "resultado"
+    ],
+    "dinamicas": {
+      "eor": "ROD.eor",
+      "precede": "ROD.sal",
+      "entrada_bs": "AUT.plan_n | AUT.plan_e | BS.norte | BS.este",
+      "nivel": "AUT.plan_n | AUT.plan_e | BS.norte | BS.este",
+      "ataque": "BS.norte | BS.este",
+      "salida_bs": "BS.norte | BS.este",
+      "salida_bs_corto": "BS.norte | BS.este",
+      "entrada_ugks": "BS.norte | BS.este",
+      "push": "BS.ataque",
+      "radial_espera": "APP.zeni | APP.rw",
+      "millas_espera": "APP.zeni | APP.rw",
+      "nivel_espera": "APP.zeni | APP.rw",
+      "numero": "APP.aprox"
+    }
+  },
+  "colores": [
+    {
+      "vuelo": "DARDO",
+      "color": "blue"
+    },
+    {
+      "vuelo": "EBRO",
+      "color": "green"
+    },
+    {
+      "vuelo": "MARTE",
+      "color": "violet"
+    },
+    {
+      "vuelo": "POKER",
+      "color": "orange"
+    }
+  ]
+}

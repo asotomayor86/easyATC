@@ -3,21 +3,9 @@
 import { useRef, useState } from "react";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { api } from "@/lib/client";
+import { downloadJson, readJson, slug, stamp } from "@/lib/files";
 import { parseMissionFile, toMissionFile } from "@/lib/missionFile";
 import type { SessionData } from "@/lib/types";
-
-/** «Sesión de ejemplo» → «sesion-de-ejemplo», para el nombre del archivo. */
-function slug(s: string) {
-  return (
-    s
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 40) || "sesion"
-  );
-}
 
 /** Exportar e importar la misión completa (variables, vuelos y guion) como JSON. */
 export function MissionFileButtons({ data, onImported }: { data: SessionData; onImported: () => void }) {
@@ -28,27 +16,21 @@ export function MissionFileButtons({ data, onImported }: { data: SessionData; on
 
   function exportFile() {
     const file = toMissionFile(data.session, data.flights, data.steps);
-    const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `easyATC_${code}_${slug(data.session.name)}_mision_${data.steps.length}pasos-${data.flights.length}vuelos_${stamp}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadJson(
+      `easyATC_${code}_${slug(data.session.name)}_mision_${data.steps.length}pasos-${data.flights.length}vuelos_${stamp()}.json`,
+      file,
+    );
     setMessage({ ok: true, text: `Exportado: ${data.steps.length} pasos, ${data.flights.length} vuelos.` });
   }
 
   async function pickFile(file: File) {
     setMessage(null);
-    let json: unknown;
-    try {
-      json = JSON.parse(await file.text());
-    } catch {
-      setMessage({ ok: false, text: `${file.name} no es un JSON válido.` });
+    const read = await readJson(file);
+    if (!read.ok) {
+      setMessage({ ok: false, text: read.error });
       return;
     }
+    const json = read.json;
     const parsed = parseMissionFile(json);
     if (!parsed.ok) {
       setMessage({ ok: false, text: `${file.name}: ${parsed.error}` });

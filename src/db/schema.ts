@@ -1,3 +1,4 @@
+import type { Board, BoardState } from "@/lib/board";
 import {
   pgTable,
   uuid,
@@ -23,6 +24,12 @@ export const sessions = pgTable("sessions", {
   startedAt: timestamp("started_at", { withTimezone: true }),
   // Pausas del reloj de misión: [{ from, to }] en ISO; `to` nulo = en pausa ahora.
   pauses: jsonb("pauses").$type<{ from: string; to: string | null }[]>().notNull().default([]),
+  // Tablero: zonas por agencia y colores de los vuelos (formato de zonas.json).
+  board: jsonb("board").$type<Board>().notNull().default({ zonas: {} }),
+  // Posición de cada vuelo en el tablero de cada agencia, durante el ejercicio.
+  boardState: jsonb("board_state").$type<BoardState>().notNull().default({}),
+  // Orden de las variables en el plan de vuelo impreso (variable → 1, 2, 3…); sin número, no sale.
+  planOrder: jsonb("plan_order").$type<Record<string, number>>().notNull().default({}),
   // Cambia con cada marca o reset: lo usa el sondeo para saber si hay novedades.
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   // Cambia al editar variables o textos: el cliente recarga el guion.

@@ -1,7 +1,8 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { sessions, flights, steps } from "@/db/schema";
-import { badRequest, cleanVars, json, notFound } from "@/lib/server";
+import { normalizeBoard } from "@/lib/board";
+import { badRequest, cleanPlanOrder, cleanVars, json, notFound } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export async function GET(_req: Request, { params }: Ctx) {
       vars: sessions.vars,
       createdAt: sessions.createdAt,
       resetAt: sessions.resetAt,
+      board: sessions.board,
+      planOrder: sessions.planOrder,
     })
     .from(sessions)
     .where(eq(sessions.code, code.toUpperCase()))
@@ -34,29 +37,36 @@ export async function GET(_req: Request, { params }: Ctx) {
   ]);
 
   return json({
-    session,
+    // El tablero puede estar guardado en un formato anterior: se entrega ya convertido.
+    session: { ...session, board: normalizeBoard(session.board) },
     flights: flightRows,
     steps: stepRows.map(({ sessionId: _s, ...s }) => s),
   });
 }
 
-/** Cuerpo: { vars?: {clave: valor}, name?: string }. Las variables se fusionan. */
+/**
+ * Cuerpo: { vars?: {clave: valor}, name?: string, planOrder?: {clave: número} }.
+ * Las variables se fusionan; el orden del plan se sustituye entero.
+ */
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
   const vars = cleanVars(body?.vars ?? {});
   if (!vars) return badRequest("vars debe ser un objeto");
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 80) : null;
+  const planOrder = body?.planOrder === undefined ? null : cleanPlanOrder(body.planOrder);
+  if (body?.planOrder !== undefined && !planOrder) return badRequest("planOrder debe ser {variable: número}");
 
   const [row] = await getDb()
     .update(sessions)
     .set({
       vars: sql`${sessions.vars} || ${JSON.stringify(vars)}::jsonb`,
       ...(name ? { name } : {}),
+      ...(planOrder ? { planOrder } : {}),
       contentAt: sql`now()`,
     })
     .where(eq(sessions.code, code.toUpperCase()))
-    .returning({ vars: sessions.vars, name: sessions.name });
+    .returning({ vars: sessions.vars, name: sessions.name, planOrder: sessions.planOrder });
   if (!row) return notFound();
   return json(row);
 }

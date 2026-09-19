@@ -37,6 +37,17 @@ export function clickTime(v: unknown): Date {
   return Number.isFinite(t) && Math.abs(t - Date.now()) <= 120_000 ? new Date(t) : new Date();
 }
 
+/** Orden del plan de vuelo: variable → número entero positivo. null si no es un objeto. */
+export function cleanPlanOrder(input: unknown): Record<string, number> | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(input)) {
+    const n = Number(v);
+    if (/^[a-z0-9_]{1,40}$/.test(k) && Number.isInteger(n) && n >= 1 && n <= 500) out[k] = n;
+  }
+  return out;
+}
+
 /** Deja solo pares clave → texto, con claves razonables. */
 export function cleanVars(input: unknown): Record<string, string> | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;

@@ -2,7 +2,7 @@
 // migraciones pendientes y crea DEMO01 si no existe. No toca ninguna sesión
 // que ya exista (para recargar DEMO01 desde guion.json: npm run db:seed).
 import { getDb } from "../src/db";
-import { ensureSession } from "../src/lib/seed";
+import { ensureSession, fillEmptyBoards } from "../src/lib/seed";
 import { runMigrations } from "./migrate";
 
 async function main() {
@@ -14,6 +14,8 @@ async function main() {
   console.log("Migraciones aplicadas.");
   const result = await ensureSession(getDb(), "DEMO01", "Sesión de ejemplo");
   console.log(`Sesión DEMO01: ${result}.`);
+  const filled = await fillEmptyBoards(getDb());
+  console.log(`Tableros vacíos rellenados con zonas.json: ${filled}.`);
 }
 
 main().catch((e) => {

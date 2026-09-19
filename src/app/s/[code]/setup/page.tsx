@@ -16,12 +16,34 @@ export default function SetupPage() {
   const [newFlightVar, setNewFlightVar] = useState("");
   // Tras importar, se vuelven a montar los campos para que muestren lo nuevo.
   const [version, setVersion] = useState(0);
+  const [localPlan, setLocalPlan] = useState<Record<string, number> | null>(null);
+  const [planError, setPlanError] = useState(false);
 
   if (error) return <p className="p-6 text-ko">{error}</p>;
   if (!data) return <p className="p-6 text-zinc-500">Cargando…</p>;
 
   const { session, flights } = data;
   const flightKeys = unionKeys(flights);
+
+  // --- Orden en el plan de vuelo impreso ---
+  const planOrder = localPlan ?? session.planOrder ?? {};
+  async function togglePlan(k: string) {
+    const current = planOrder[k];
+    const next: Record<string, number> = {};
+    if (current) {
+      // Quitarla y cerrar el hueco: las posteriores suben un puesto.
+      for (const [key, n] of Object.entries(planOrder)) if (key !== k) next[key] = n > current ? n - 1 : n;
+    } else {
+      Object.assign(next, planOrder, { [k]: Math.max(0, ...Object.values(planOrder)) + 1 });
+    }
+    setLocalPlan(next);
+    setPlanError(false);
+    try {
+      await api(`/api/s/${code}`, "PATCH", { planOrder: next });
+    } catch {
+      setPlanError(true);
+    }
+  }
 
   const saveSession = (k: string) => async (v: string) => {
     await api(`/api/s/${code}`, "PATCH", { vars: { [k]: v } });
@@ -61,6 +83,7 @@ export default function SetupPage() {
             data={data}
             onImported={async () => {
               await reload();
+              setLocalPlan(null);
               setVersion((v) => v + 1);
             }}
           />
@@ -72,7 +95,9 @@ export default function SetupPage() {
         <Link href={`/s/${code}/guion`} className="font-semibold text-gold underline">
           guion
         </Link>
-        .
+        . La casilla <span className="kicker text-gold">Plan</span> de cada variable fija su orden en el plan de vuelo
+        impreso: pulsa las variables en el orden en que quieres verlas; sin número, no se imprimen.
+        {planError && <span className="mt-1 block text-ko">No se pudo guardar el orden del plan.</span>}
       </p>
 
       <div key={version}>
@@ -80,10 +105,13 @@ export default function SetupPage() {
         <h2 className="mb-4 kicker text-gold">Variables globales</h2>
         <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {Object.keys(session.vars).map((k) => (
-            <label key={k} className="block">
-              <span className="mb-1 block font-mono text-xs text-zinc-500">{`{${k}}`}</span>
+            <div key={k}>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="font-mono text-xs text-zinc-500">{`{${k}}`}</span>
+                <PlanCell n={planOrder[k]} onToggle={() => togglePlan(k)} />
+              </div>
               <BlurInput value={session.vars[k] ?? ""} onSave={saveSession(k)} />
-            </label>
+            </div>
           ))}
         </div>
         <AddVar value={newSessionVar} onChange={setNewSessionVar} onSubmit={addSessionVar} />
@@ -103,6 +131,9 @@ export default function SetupPage() {
                     {f.callsign}
                   </th>
                 ))}
+                <th className="kicker px-2 py-2 text-center text-[10px] text-gold" title="Orden en el plan de vuelo impreso">
+                  Plan
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +153,9 @@ export default function SetupPage() {
                       />
                     </td>
                   ))}
+                  <td className="px-2 py-1 text-center align-top">
+                    <PlanCell n={planOrder[k]} onToggle={() => togglePlan(k)} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -131,6 +165,22 @@ export default function SetupPage() {
       </section>
       </div>
     </main>
+  );
+}
+
+/** Orden en el plan de vuelo: pulsar asigna el siguiente número libre; pulsar de nuevo lo quita. */
+function PlanCell({ n, onToggle }: { n: number | undefined; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={n ? `Puesto ${n} en el plan de vuelo · pulsa para quitarla` : "No sale en el plan de vuelo · pulsa para añadirla al final"}
+      className={`h-7 w-10 shrink-0 rounded-[2px] border text-[12px] font-semibold ${
+        n ? "border-gold/60 bg-gold/10 text-gold" : "border-dashed border-zinc-700 text-zinc-600 hover:border-gold hover:text-gold"
+      }`}
+    >
+      {n ?? "—"}
+    </button>
   );
 }
 

@@ -1,3 +1,5 @@
+import type { Board, BoardState } from "./board";
+
 export type Vars = Record<string, string>;
 export type Role = "C1" | "C2" | "C3";
 export const ROLES: Role[] = ["C1", "C2", "C3"];
@@ -9,6 +11,9 @@ export interface Session {
   vars: Vars;
   createdAt: string;
   resetAt: string | null;
+  board: Board;
+  /** Orden de las variables en el plan de vuelo impreso; las que no están, no salen. */
+  planOrder: Record<string, number>;
 }
 
 export interface Flight {
@@ -75,6 +80,7 @@ export interface StateData {
   startedAt: string | null;
   pauses: Pause[];
   serverNow: string;
+  boardState: BoardState;
   marks: Mark[];
   agencies: AgencyState[];
   presence: Record<Role, number>;
