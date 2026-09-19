@@ -1,7 +1,17 @@
 "use client";
 
-import { memo, useRef, useState } from "react";
-import { FLIGHT_COLORS, POOL_ZONE, slotKey, stackCell, type AgencyLayout, type Board, type Zone } from "@/lib/board";
+import { memo, useEffect, useRef, useState } from "react";
+import {
+  FLIGHT_COLORS,
+  POOL_ZONE,
+  sendTargets,
+  slotKey,
+  stackCell,
+  type AgencyLayout,
+  type Board,
+  type BoardPos,
+  type Zone,
+} from "@/lib/board";
 import { FlightPlanCard } from "@/components/FlightPlanCard";
 import type { Flight, Vars } from "@/lib/types";
 
@@ -29,6 +39,9 @@ export const BoardStrip = memo(function BoardStrip({
   planOrder,
   layout,
   onMove,
+  allZones,
+  current,
+  onSend,
 }: {
   zones: Zone[];
   flights: Flight[];
@@ -38,10 +51,18 @@ export const BoardStrip = memo(function BoardStrip({
   planOrder: Record<string, number> | undefined;
   layout: AgencyLayout;
   onMove: MoveFlight;
+  /** Tablero completo (todas las agencias), para el menú de «enviar a». */
+  allZones: Record<string, Zone[]>;
+  /** Dónde está ahora cada vuelo. */
+  current: Record<string, { agency: string; pos: BoardPos }>;
+  /** Envía un vuelo a cualquier posición del tablero, de cualquier agencia. */
+  onSend: (agency: string, flightId: string, zone: string, slot: string | null) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   // Pastilla bajo el ratón: muestra la ficha con el plan de vuelo.
   const [hover, setHover] = useState<{ id: string; left: number; bottom: number } | null>(null);
+  // Menú del botón derecho sobre una pastilla: enviar el vuelo a otra posición.
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const start = useRef<{ id: string; x: number; y: number; dragging: boolean } | null>(null);
@@ -79,6 +100,12 @@ export const BoardStrip = memo(function BoardStrip({
           setHover({ id: f.id, left: r.left, bottom: r.bottom });
         }}
         onPointerLeave={() => setHover(null)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setHover(null);
+          setSelected(null);
+          setMenu({ id: f.id, x: e.clientX, y: e.clientY });
+        }}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           setHover(null);
@@ -201,7 +228,22 @@ export const BoardStrip = memo(function BoardStrip({
         </p>
       )}
 
-      {hover && !drag && (() => {
+      {menu && (
+        <SendMenu
+          flight={flights.find((x) => x.id === menu.id)!}
+          x={menu.x}
+          y={menu.y}
+          allZones={allZones}
+          current={current[menu.id]}
+          onPick={(agency, zone, slot) => {
+            onSend(agency, menu.id, zone, slot);
+            setMenu(null);
+          }}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {hover && !drag && !menu && (() => {
         const f = flights.find((x) => x.id === hover.id);
         return f ? <FlightPlanCard flight={f} sessionVars={sessionVars} planOrder={planOrder} at={hover} /> : null;
       })()}
@@ -298,4 +340,76 @@ function StackGrid({ zone, drop }: { zone: Zone; drop: (zone: string, slot: stri
 /** Las celdas de una fila van directamente a la rejilla. */
 function Row({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
+}
+
+/** Menú «Enviar a»: todas las posiciones del tablero, agrupadas por agencia. */
+function SendMenu({
+  flight,
+  x,
+  y,
+  allZones,
+  current,
+  onPick,
+  onClose,
+}: {
+  flight: Flight;
+  x: number;
+  y: number;
+  allZones: Record<string, Zone[]>;
+  current: { agency: string; pos: BoardPos } | undefined;
+  onPick: (agency: string, zone: string, slot: string | null) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("mousedown", away);
+    window.addEventListener("keydown", key);
+    window.addEventListener("resize", onClose);
+    return () => {
+      window.removeEventListener("mousedown", away);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [onClose]);
+
+  const groups = sendTargets(allZones);
+  const width = 300;
+  const left = Math.min(x, window.innerWidth - width - 8);
+  const top = Math.min(y, window.innerHeight - 120);
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      className="fixed z-50 overflow-y-auto rounded-[2px] border border-zinc-700 border-l-4 border-l-gold bg-zinc-900 py-1.5"
+      style={{ left, top, width, maxHeight: Math.max(160, window.innerHeight - top - 8) }}
+    >
+      <p className="kicker px-3 pb-1.5 text-[10px] text-gold">Enviar {flight.vars.corto || flight.callsign} a…</p>
+      {groups.map((g) => (
+        <div key={g.agency} className="border-t border-zinc-800 py-1">
+          <p className="kicker px-3 py-1 text-[10px] text-zinc-500">
+            {g.agency} · {g.name}
+          </p>
+          {g.items.map((it) => {
+            const here =
+              current?.agency === g.agency && current.pos.zone === it.zone && (current.pos.slot ?? null) === it.slot;
+            return (
+              <button
+                key={`${it.zone}|${it.slot ?? ""}`}
+                type="button"
+                role="menuitem"
+                disabled={here}
+                onClick={() => onPick(g.agency, it.zone, it.slot)}
+                className="block w-full px-3 py-1 text-left text-[13px] text-zinc-200 hover:bg-gold/15 hover:text-zinc-50 disabled:cursor-default disabled:text-gold disabled:hover:bg-transparent"
+              >
+                {here ? "● " : ""}
+                {it.label}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
 }

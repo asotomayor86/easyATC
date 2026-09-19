@@ -11,7 +11,15 @@ import { Rails } from "@/components/Rails";
 import { StatusCounts } from "@/components/StatusCounts";
 import { StepRow, wallTime, type SetStatus } from "@/components/StepRow";
 import { isPaused, missionTime, parseClock, type Pause } from "@/lib/mission";
-import { layoutAgency, type AgencyLayout, type Board, type BoardPos, type BoardState, type Zone } from "@/lib/board";
+import {
+  currentPositions,
+  layoutAgency,
+  type AgencyLayout,
+  type Board,
+  type BoardPos,
+  type BoardState,
+  type Zone,
+} from "@/lib/board";
 import { api, clientId, useSessionData } from "@/lib/client";
 import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
 import { overlay, useOverrides } from "@/lib/optimistic";
@@ -41,6 +49,7 @@ import {
 const POLL_MS = 2500;
 const EMPTY_ZONES: Zone[] = [];
 const EMPTY_LAYOUT: AgencyLayout = { slots: {}, inherited: {} };
+const EMPTY_BOARD_ZONES: Record<string, Zone[]> = {};
 
 /** scrollLeft que deja la columna `i` centrada en el carrusel. */
 function columnTarget(track: HTMLElement, i: number) {
@@ -511,6 +520,7 @@ export default function ControllerPage() {
       AgencyLayout
     >;
   }, [data, boardState]);
+  const currentPos = useMemo(() => currentPositions(data?.session.board?.zonas ?? {}, boardState), [data, boardState]);
   const rows = useMemo(() => (data ? buildRows(data.steps, data.flights) : []), [data]);
   const groups = useMemo(() => groupByAgency(rows), [rows]);
   useMemo(() => {
@@ -655,6 +665,8 @@ export default function ControllerPage() {
                 colores={data.session.board?.colores}
                 layout={layouts[g.agency] ?? EMPTY_LAYOUT}
                 onMoveFlight={moveFlight}
+                allZones={data.session.board?.zonas ?? EMPTY_BOARD_ZONES}
+                current={currentPos}
                 expanded={expanded}
                 planOrder={data.session.planOrder}
                 checklistOnly={checklistView.has(g.agency)}
@@ -689,6 +701,8 @@ const AgencySection = memo(function AgencySection({
   colores,
   layout,
   onMoveFlight,
+  allZones,
+  current,
   expanded,
   planOrder,
   onToggleFold,
@@ -709,6 +723,8 @@ const AgencySection = memo(function AgencySection({
   flights: Flight[];
   colores: Board["colores"];
   layout: AgencyLayout;
+  allZones: Record<string, Zone[]>;
+  current: Record<string, { agency: string; pos: BoardPos }>;
   onMoveFlight: (agency: string, flightId: string, zone: string, slot: string | null) => void;
   /** Grupos de vuelo desplegados; los demás están plegados. */
   expanded: Set<string>;
@@ -759,6 +775,9 @@ const AgencySection = memo(function AgencySection({
         planOrder={planOrder}
         layout={layout}
         onMove={(flightId, zone, slot) => onMoveFlight(group.agency, flightId, zone, slot)}
+        allZones={allZones}
+        current={current}
+        onSend={onMoveFlight}
       />
 
       <div className="divide-y divide-zinc-800">

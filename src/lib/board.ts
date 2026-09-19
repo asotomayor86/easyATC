@@ -280,14 +280,59 @@ function upstreamOf(agency: string, entrada: Zone, zonas: Record<string, Zone[]>
   return zone && a !== agency ? { agency: a, zone } : null;
 }
 
+/** Entradas de una agencia que heredan de la salida de otra. */
+function linksOf(agency: string, zonas: Record<string, Zone[]>) {
+  const inherited: AgencyLayout["inherited"] = {};
+  const links: { entrada: string; agency: string; salida: string }[] = [];
+  for (const e of (zonas[agency] ?? []).filter((z) => z.tipo === "entrada")) {
+    const up = upstreamOf(agency, e, zonas);
+    if (up) {
+      inherited[e.id] = { agency: up.agency, zone: up.zone.id, name: up.zone.nombre || up.zone.id };
+      links.push({ entrada: e.id, agency: up.agency, salida: up.zone.id });
+    }
+  }
+  return { inherited, links };
+}
+
 /**
- * Dónde está cada vuelo en el tablero de una agencia:
- * 1. Si la agencia lo ha colocado en una de sus zonas (salvo una entrada heredada), ahí.
- * 2. Si no, si está en la salida de la que hereda una de sus entradas, en esa
- *    entrada y con el mismo orden que en la salida.
- * 3. Si no, en su primera entrada sin herencia (el punto de partida), o en
- *    «sin ubicar» si la agencia no tiene entradas. Si todas sus entradas
- *    heredan, el vuelo todavía no ha llegado y no aparece.
+ * Dónde está ahora cada vuelo: cada vuelo está en un único sitio, el último
+ * donde alguien lo colocó (en cualquier agencia). Las posiciones que ya no
+ * existen en el tablero se ignoran.
+ */
+export function currentPositions(zonas: Record<string, Zone[]>, state: BoardState) {
+  const out: Record<string, { agency: string; pos: BoardPos }> = {};
+  for (const [agency, flights] of Object.entries(state)) {
+    for (const [id, p] of Object.entries(flights ?? {})) {
+      if (!validPos(zonas[agency] ?? [], p)) continue;
+      if (!out[id] || p.at > out[id].pos.at) out[id] = { agency, pos: p };
+    }
+  }
+  return out;
+}
+
+/**
+ * Principio de la cadena: la primera agencia (por fase) con una entrada que no
+ * hereda de nadie. Ahí empiezan los vuelos que nadie ha movido todavía.
+ */
+function chainStart(zonas: Record<string, Zone[]>) {
+  for (const a of AGENCY_LIST) {
+    const zones = zonas[a.id] ?? [];
+    if (zones.length === 0) continue;
+    const { inherited } = linksOf(a.id, zonas);
+    const home = zones.find((z) => z.tipo === "entrada" && !inherited[z.id]);
+    if (home) return { agency: a.id, zone: home.id };
+  }
+  const first = AGENCY_LIST.find((a) => (zonas[a.id] ?? []).length > 0);
+  return first ? { agency: first.id, zone: POOL_ZONE } : null;
+}
+
+/**
+ * Qué vuelos se ven en el tablero de una agencia, y dónde:
+ * 1. Los que están ahora en una de sus zonas.
+ * 2. Los que están en la salida de la que hereda una de sus entradas: se ven
+ *    también en esa entrada, en el mismo orden. En cuanto esta agencia los
+ *    saca de ahí, dejan de verse en la agencia anterior.
+ * 3. Los que nadie ha movido todavía, solo en el principio de la cadena.
  */
 export function layoutAgency(
   agency: string,
@@ -295,34 +340,24 @@ export function layoutAgency(
   state: BoardState,
   flightIds: string[],
 ): AgencyLayout {
-  const zones = zonas[agency] ?? [];
-  const own = state[agency] ?? {};
-  const entradas = zones.filter((z) => z.tipo === "entrada");
-  const inherited: AgencyLayout["inherited"] = {};
-  const links: { entrada: string; agency: string; salida: string }[] = [];
-  for (const e of entradas) {
-    const up = upstreamOf(agency, e, zonas);
-    if (up) {
-      inherited[e.id] = { agency: up.agency, zone: up.zone.id, name: up.zone.nombre || up.zone.id };
-      links.push({ entrada: e.id, agency: up.agency, salida: up.zone.id });
-    }
-  }
-  const home = entradas.find((e) => !inherited[e.id])?.id ?? (entradas.length === 0 ? POOL_ZONE : null);
+  const { inherited, links } = linksOf(agency, zonas);
+  const current = currentPositions(zonas, state);
+  const start = chainStart(zonas);
 
   const slots: AgencyLayout["slots"] = {};
   const put = (key: string, flightId: string, at: number) => (slots[key] ??= []).push({ flightId, at });
   for (const id of flightIds) {
-    const p = own[id];
-    if (validPos(zones, p) && !inherited[p.zone]) {
-      put(slotKey(p.zone, p.slot), id, p.at);
+    const c = current[id];
+    if (!c) {
+      if (start?.agency === agency) put(slotKey(start.zone, null), id, 0);
       continue;
     }
-    const link = links.find((l) => {
-      const up = state[l.agency]?.[id];
-      return up?.zone === l.salida && up.slot === null;
-    });
-    if (link) put(slotKey(link.entrada, null), id, state[link.agency][id].at);
-    else if (home) put(slotKey(home, null), id, 0);
+    if (c.agency === agency) {
+      put(slotKey(c.pos.zone, c.pos.slot), id, c.pos.at);
+      continue;
+    }
+    const link = links.find((l) => l.agency === c.agency && l.salida === c.pos.zone && c.pos.slot === null);
+    if (link) put(slotKey(link.entrada, null), id, c.pos.at);
   }
   for (const list of Object.values(slots)) list.sort((a, b) => a.at - b.at);
   return { slots, inherited };
@@ -338,4 +373,37 @@ export function normalizeBoard(input: unknown): Board {
   }
   const colores = validateColors(b.colores ?? []);
   return { zonas, colores: colores.ok ? colores.value : [] };
+}
+
+export interface SendTarget {
+  zone: string;
+  slot: string | null;
+  label: string;
+}
+
+/**
+ * Todas las posiciones a las que se puede enviar un vuelo, agrupadas por
+ * agencia en orden de fase: cada zona y, en los stacks, cada celda activa.
+ * Las entradas heredadas no aparecen, porque no se editan.
+ */
+export function sendTargets(zonas: Record<string, Zone[]>) {
+  return AGENCY_LIST.map((a) => {
+    const { inherited } = linksOf(a.id, zonas);
+    const items: SendTarget[] = [];
+    for (const z of zonas[a.id] ?? []) {
+      if (z.tipo === "entrada" && inherited[z.id]) continue;
+      const name = z.nombre || z.id;
+      if (z.tipo === "stack") {
+        const off = new Set(z.excluidos ?? []);
+        for (const b of z.bloques ?? [])
+          for (const p of z.puntos ?? []) {
+            const cell = stackCell(p, b);
+            if (!off.has(cell)) items.push({ zone: z.id, slot: cell, label: `${name} · ${p} · ${b}` });
+          }
+      } else {
+        items.push({ zone: z.id, slot: null, label: name });
+      }
+    }
+    return { agency: a.id, name: a.nombre, items };
+  }).filter((g) => g.items.length > 0);
 }
