@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-export function Nav({ code, current }: { code: string; current: "vista" | "setup" | "guion" | "tablero" }) {
+export function Nav({
+  code,
+  current,
+}: {
+  code: string;
+  current: "vista" | "setup" | "guion" | "tablero" | "formacion";
+}) {
   const item = (href: string, label: string, key: string) => (
     <Link
       href={href}
@@ -17,6 +23,7 @@ export function Nav({ code, current }: { code: string; current: "vista" | "setup
       {item(`/s/${code}/setup`, "Variables", "setup")}
       {item(`/s/${code}/guion`, "Guion", "guion")}
       {item(`/s/${code}/tablero`, "Tablero", "tablero")}
+      {item(`/s/${code}/formacion`, "Formación", "formacion")}
     </nav>
   );
 }

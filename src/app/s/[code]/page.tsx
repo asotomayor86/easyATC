@@ -1331,6 +1331,9 @@ function Menu({ code, onRestoreFlights }: { code: string; onRestoreFlights: () =
         <Link href={`/s/${code}/tablero`} className={item}>
           Tablero
         </Link>
+        <Link href={`/s/${code}/formacion`} className={item}>
+          Formación
+        </Link>
         <Link href="/" className={`${item} text-zinc-400`}>
           Salir
         </Link>
