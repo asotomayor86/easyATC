@@ -637,8 +637,6 @@ export default function ControllerPage() {
     return <RolePicker name={data.session.name} code={code} progress={progress} presence={presence} onPick={setRole} />;
   }
 
-  const mine = progress[role];
-
   return (
     <div className="flex h-dvh flex-col">
       <header className="shrink-0 border-b border-zinc-800 bg-zinc-950">
@@ -664,10 +662,7 @@ export default function ControllerPage() {
             {offline && <span className="kicker text-[10px] text-ko">Sin conexión</span>}
 
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="text-[13px] font-semibold">
-                {mine.done}/{mine.total}
-              </span>
-              <span className="hidden gap-3 border-l border-zinc-800 pl-3 md:flex">
+              <span className="hidden gap-3 md:flex">
                 {ROLES.filter((r) => r !== role).map((r) => (
                   <span key={r} className="kicker text-zinc-500">
                     <span className="text-zinc-300">{r}</span> {progress[r].pct}%
@@ -684,10 +679,17 @@ export default function ControllerPage() {
                 offset={clockOffset}
                 onClick={startMission}
               />
+              <IconButton
+                label={railsOpen ? "Ocultar los rieles" : "Mostrar los rieles"}
+                active={railsOpen}
+                onClick={toggleRails}
+              >
+                <RailsIcon />
+              </IconButton>
               <HeaderButton onClick={reset} tone="ko">
                 Reset
               </HeaderButton>
-              <Menu code={code} railsOpen={railsOpen} onToggleRails={toggleRails} onRestoreFlights={restoreFlights} />
+              <Menu code={code} onRestoreFlights={restoreFlights} />
               <FullScreenButton />
             </div>
           </div>
@@ -868,10 +870,10 @@ const AgencySection = memo(function AgencySection({
           </ButtonGroup>
           <ButtonGroup label="Comms">
             <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
-            <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
+            <FoldButton label="Desplegar todos los grupos" className="-ml-px" onClick={() => onFoldMany(keys, false)}>
               +
             </FoldButton>
-            <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
+            <FoldButton label="Plegar todos los grupos" className="-ml-px" onClick={() => onFoldMany(keys, true)}>
               −
             </FoldButton>
           </ButtonGroup>
@@ -1082,7 +1084,8 @@ function ButtonGroup({ label, children }: { label: string; children: React.React
   return (
     <div className="flex flex-col items-center gap-[3px]">
       <span className="kicker text-[10px] leading-none text-zinc-500">{label}</span>
-      <div className="flex items-center gap-1.5">{children}</div>
+      {/* Sin separación: los botones de un grupo se tocan entre ellos. */}
+      <div className="flex items-center">{children}</div>
     </div>
   );
 }
@@ -1091,14 +1094,24 @@ function ButtonGroup({ label, children }: { label: string; children: React.React
 const SQUARE =
   "tint flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-[2px] border text-[13px] leading-none";
 
-function FoldButton({ label, onClick, children }: { label: string; onClick: () => void; children: string }) {
+function FoldButton({
+  label,
+  onClick,
+  className = "",
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+  children: string;
+}) {
   return (
     <button
       type="button"
       title={label}
       aria-label={label}
       onClick={onClick}
-      className={`${SQUARE} border-zinc-700 font-cond text-[16px] font-bold text-zinc-300 hover:border-gold hover:text-gold`}
+      className={`${SQUARE} border-zinc-700 font-cond text-[16px] font-bold text-zinc-300 hover:border-gold hover:text-gold ${className}`}
     >
       {children}
     </button>
@@ -1151,6 +1164,43 @@ function Badge({ tone, children }: { tone: keyof typeof BADGE_TONES; children: R
   );
 }
 
+/** Botón de la barra de sesión con icono, del mismo cuerpo que Reset y ⋯. */
+function IconButton({
+  label,
+  active,
+  onClick,
+  children,
+}: {
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={`tint flex items-center rounded-[2px] border px-2.5 py-[7px] ${
+        active ? "border-gold text-gold" : "border-zinc-600 text-zinc-200 hover:border-zinc-400"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Rieles: tres filas, una por vuelo. */
+function RailsIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden className="block">
+      <path d="M1 3h11M1 6.5h8M1 10h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** Pantalla completa: en tableta quita la barra del navegador y se gana alto. */
 function FullScreenButton() {
   const [full, setFull] = useState(false);
@@ -1164,15 +1214,15 @@ function FullScreenButton() {
     else document.documentElement.requestFullscreen().catch(() => {});
   };
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      title={full ? "Salir de pantalla completa" : "Pantalla completa"}
-      aria-label={full ? "Salir de pantalla completa" : "Pantalla completa"}
-      className="rounded-[2px] border border-zinc-700 px-2 py-[3px] text-[13px] leading-[16px] text-zinc-300 hover:border-gold hover:text-gold"
-    >
-      {full ? "⤡" : "⤢"}
-    </button>
+    <IconButton label={full ? "Salir de pantalla completa" : "Pantalla completa"} onClick={toggle}>
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden className="block">
+        {full ? (
+          <path d="M5.5 1.5v4h-4M7.5 11.5v-4h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        ) : (
+          <path d="M1.5 4.5v-3h3M11.5 8.5v3h-3M11.5 4.5v-3h-3M1.5 8.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+      </svg>
+    </IconButton>
   );
 }
 
@@ -1261,17 +1311,7 @@ function RolePicker({
   );
 }
 
-function Menu({
-  code,
-  railsOpen,
-  onToggleRails,
-  onRestoreFlights,
-}: {
-  code: string;
-  railsOpen: boolean;
-  onToggleRails: () => void;
-  onRestoreFlights: () => void;
-}) {
+function Menu({ code, onRestoreFlights }: { code: string; onRestoreFlights: () => void }) {
   const item = "block w-full px-3 py-2.5 text-left hover:bg-zinc-800";
   return (
     <details className="relative">
@@ -1279,9 +1319,6 @@ function Menu({
         ⋯
       </summary>
       <div className="absolute right-0 z-30 mt-1 w-44 rounded-[2px] border border-zinc-700 bg-zinc-900 text-[13px]">
-        <button type="button" onClick={onToggleRails} className={item}>
-          {railsOpen ? "Ocultar rieles" : "Mostrar rieles"}
-        </button>
         <button type="button" onClick={onRestoreFlights} className={item}>
           Restaurar vuelos…
         </button>

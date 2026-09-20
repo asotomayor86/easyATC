@@ -92,6 +92,22 @@ export const BoardStrip = memo(function BoardStrip({
   const start = useRef<{ id: string; x: number; y: number; dragging: boolean } | null>(null);
   const root = useRef<HTMLDivElement>(null);
 
+  // Al cambiar de agencia (o desplazar cualquier cosa) la ficha del plan se cierra:
+  // si no, se queda colgada en mitad de la pantalla.
+  useEffect(() => {
+    if (!tapped && !hover) return;
+    const close = () => {
+      setTapped(null);
+      setHover(null);
+    };
+    document.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [tapped, hover]);
+
   if (zones.length === 0) return null;
   const byId = new Map(flights.map((f) => [f.id, f]));
   const itemsAt = (key: string) =>
