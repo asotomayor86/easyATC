@@ -20,7 +20,7 @@ export function AgencyChips({
   onPress: (agency: string) => void;
 }) {
   return (
-    <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 min-[1100px]:mx-0 min-[1100px]:grid min-[1100px]:grid-cols-9 min-[1100px]:overflow-visible min-[1100px]:px-0">
+    <div className="no-bar -mx-3 flex gap-1.5 overflow-x-auto px-3 min-[1100px]:mx-0 min-[1100px]:grid min-[1100px]:grid-cols-9 min-[1100px]:overflow-visible min-[1100px]:px-0">
       {AGENCY_LIST.map((a) => {
         const state = states.get(a.id) ?? "cerrada";
         const mine = a.controlador === role;

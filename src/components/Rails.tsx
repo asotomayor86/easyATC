@@ -47,7 +47,7 @@ export const Rails = memo(function Rails({
       </div>
 
       {/* Puntos: una columna por agencia */}
-      <div className="min-w-0 flex-1 overflow-x-auto">
+      <div className="no-bar min-w-0 flex-1 overflow-x-auto">
         <div className="flex w-max gap-[10px]">
           {segments.map((seg) => (
             <div key={seg.agency} className="shrink-0">

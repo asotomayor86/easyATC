@@ -285,7 +285,7 @@ export const BoardStrip = memo(function BoardStrip({
     <div ref={root} data-board className="shrink-0 border-b border-zinc-800 bg-zinc-950/60 px-3 py-2.5">
       <div className="mb-1.5 flex items-center gap-2">
         <p className="kicker shrink-0 text-[10px] text-zinc-500">Tablero</p>
-        {!boardOpen && <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{oneLine(allGroups)}</div>}
+        {!boardOpen && <div className="no-bar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{oneLine(allGroups)}</div>}
         <Fold
           open={boardOpen}
           onToggle={() => setBoardOpen((v) => !v)}
@@ -455,7 +455,7 @@ function Box({
           {kind} · <span className="text-zinc-300">{name}</span>
           {note && <span className="ml-1.5 text-[10px] normal-case text-zinc-500">«{note}»</span>}
         </p>
-        {!open && <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{line}</div>}
+        {!open && <div className="no-bar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{line}</div>}
         <Fold open={open} onToggle={onToggle} label={open ? `Plegar ${name}` : `Desplegar ${name}`} className={open ? "ml-auto" : ""} />
       </div>
       {open && children}
@@ -500,7 +500,7 @@ function StackGrid({ zone, drop }: { zone: Zone; drop: (zone: string, slot: stri
   const off = new Set(zone.excluidos ?? []);
   if (puntos.length === 0 || bloques.length === 0) return <p className="text-[11px] text-zinc-500">Sin puntos o sin bloques.</p>;
   return (
-    <div className="overflow-x-auto">
+    <div className="no-bar overflow-x-auto">
       <div
         className="grid min-w-max gap-1"
         style={{ gridTemplateColumns: `auto repeat(${puntos.length}, minmax(110px, 1fr))` }}

@@ -75,3 +75,12 @@ body {
     border-color 150ms linear,
     color 150ms linear;
 }
+
+/* Desplazamiento lateral sin barra a la vista (molesta en tableta). */
+.no-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-bar::-webkit-scrollbar {
+  display: none;
+}

@@ -582,11 +582,13 @@ export default function ControllerPage() {
       const zone = zonas[cur.agency]?.find((z) => z.id === cur.pos.zone);
       let agency = cur.agency;
       if (zone?.tipo === "salida") {
+        // Igual que el tablero: los enlaces dentro de la misma agencia no cuentan.
         const ref = `${cur.agency}.${zone.id}`;
-        const heredera = Object.entries(zonas).find(([a, zs]) =>
-          a !== cur.agency && zs.some((z) => z.tipo === "entrada" && z.origen === ref),
-        );
-        agency = zone.destino?.split(".")[0] ?? heredera?.[0] ?? agency;
+        const hereda = Object.entries(zonas).find(
+          ([a, zs]) => a !== cur.agency && zs.some((z) => z.tipo === "entrada" && z.origen === ref),
+        )?.[0];
+        const destino = zone.destino?.split(".")[0];
+        agency = hereda ?? (destino && destino !== cur.agency ? destino : agency);
       }
       (out[agency] ??= []).push({ id: f.id, name: f.callsign, color: flightColor(f, colores) });
     }
@@ -655,13 +657,10 @@ export default function ControllerPage() {
             )}
             {offline && <span className="kicker text-[10px] text-ko">Sin conexión</span>}
 
-            <div className="flex min-w-[200px] flex-1 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <span className="text-[13px] font-semibold">
                 {mine.done}/{mine.total}
               </span>
-              <div className="h-1 max-w-[240px] flex-1 bg-zinc-800">
-                <div className="h-full bg-ok" style={{ width: `${mine.pct}%` }} />
-              </div>
               <span className="hidden gap-3 border-l border-zinc-800 pl-3 md:flex">
                 {ROLES.filter((r) => r !== role).map((r) => (
                   <span key={r} className="kicker text-zinc-500">
@@ -711,7 +710,7 @@ export default function ControllerPage() {
         <div
           ref={trackRef}
           onScroll={onTrackScroll}
-          className="relative flex min-w-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden py-3"
+          className="no-bar relative flex min-w-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden py-3"
         >
           <div aria-hidden className="w-[calc(50%-min(23rem,50vw-3.5rem))] shrink-0" />
           {groups.map((g, i) => (
@@ -841,7 +840,7 @@ const AgencySection = memo(function AgencySection({
       className={`flex h-full min-w-0 flex-col rounded-[2px] border border-zinc-800 bg-zinc-900/50 ${mine ? "" : "opacity-[0.55]"}`}
     >
       <header
-        className={`flex shrink-0 items-start justify-between gap-x-3 gap-y-1 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-1.5 ${
+        className={`flex shrink-0 items-center justify-between gap-x-3 gap-y-1 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-1.5 ${
           mine ? "border-l-gold" : "border-l-zinc-600"
         }`}
       >
@@ -854,18 +853,16 @@ const AgencySection = memo(function AgencySection({
             {agencyName(group.agency)}
           </h2>
         </div>
-        {/* Estado arriba del todo; justo debajo, vista y plegado. */}
-        <div className="flex min-w-0 flex-col items-end gap-1">
+        {/* Todo en una línea: estado, vista y plegado, en botones cuadrados. */}
+        <div className="flex shrink-0 items-center gap-1.5">
           <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-            <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
-            <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
-              +
-            </FoldButton>
-            <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
-              −
-            </FoldButton>
-          </div>
+          <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
+          <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
+            +
+          </FoldButton>
+          <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
+            −
+          </FoldButton>
         </div>
       </header>
 
@@ -1037,25 +1034,31 @@ function MissionButton({
 }
 
 function ViewSwitch({ checklist, onChange }: { checklist: boolean; onChange: (checklist: boolean) => void }) {
-  const item = (active: boolean, label: string, value: boolean, first: boolean) => (
+  const item = (active: boolean, label: string, icon: string, value: boolean, first: boolean) => (
     <button
       type="button"
       aria-pressed={active}
+      title={label}
+      aria-label={label}
       onClick={() => onChange(value)}
-      className={`tint kicker border px-2 py-[5px] text-[10px] ${first ? "" : "-ml-px"} ${
+      className={`${SQUARE} ${first ? "" : "-ml-px"} ${
         active ? "relative z-[1] border-gold bg-gold text-zinc-950" : "border-zinc-700 text-zinc-500 hover:text-zinc-200"
       }`}
     >
-      {label}
+      {icon}
     </button>
   );
   return (
     <div role="group" aria-label="Vista de la agencia" className="flex">
-      {item(!checklist, "Completas", false, true)}
-      {item(checklist, "Checklist", true, false)}
+      {item(!checklist, "Transmisiones completas", "☰", false, true)}
+      {item(checklist, "Solo checklist", "☑", true, false)}
     </div>
   );
 }
+
+/** Botón cuadrado de la cabecera de agencia: solo icono, sin texto. */
+const SQUARE =
+  "tint flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-[2px] border text-[13px] leading-none";
 
 function FoldButton({ label, onClick, children }: { label: string; onClick: () => void; children: string }) {
   return (
@@ -1064,17 +1067,17 @@ function FoldButton({ label, onClick, children }: { label: string; onClick: () =
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="flex h-[23px] w-[23px] items-center justify-center rounded-[2px] border border-zinc-700 font-cond text-[16px] leading-none font-bold text-zinc-300 hover:border-gold hover:text-gold"
+      className={`${SQUARE} border-zinc-700 font-cond text-[16px] font-bold text-zinc-300 hover:border-gold hover:text-gold`}
     >
       {children}
     </button>
   );
 }
 
-const STATE_BUTTONS: { state: AgencyStateName; label: string; active: string }[] = [
-  { state: "cerrada", label: "Cerrada", active: "border-zinc-500 bg-zinc-700 text-zinc-100" },
-  { state: "abierta", label: "Abierta", active: "border-ok bg-ok text-zinc-950" },
-  { state: "finalizada", label: "Finalizada", active: "border-zinc-500 bg-zinc-800 text-zinc-300" },
+const STATE_BUTTONS: { state: AgencyStateName; label: string; icon: string; active: string }[] = [
+  { state: "cerrada", label: "Cerrada", icon: "○", active: "border-zinc-500 bg-zinc-700 text-zinc-100" },
+  { state: "abierta", label: "Abierta", icon: "●", active: "border-ok bg-ok text-zinc-950" },
+  { state: "finalizada", label: "Finalizada", icon: "✓", active: "border-zinc-500 bg-zinc-800 text-zinc-300" },
 ];
 
 function StateSwitch({ state, onChange }: { state: AgencyStateName; onChange: (s: AgencyStateName) => void }) {
@@ -1085,13 +1088,14 @@ function StateSwitch({ state, onChange }: { state: AgencyStateName; onChange: (s
           key={b.state}
           type="button"
           aria-pressed={state === b.state}
+          title={`Agencia ${b.label.toLowerCase()}`}
+          aria-label={b.label}
           onClick={() => onChange(b.state)}
-          className={`tint kicker border px-2 py-[5px] text-[10px] ${i > 0 ? "-ml-px" : ""} ${
+          className={`${SQUARE} ${i > 0 ? "-ml-px" : ""} ${
             state === b.state ? `relative z-[1] ${b.active}` : "border-zinc-700 text-zinc-500 hover:text-zinc-200"
           }`}
         >
-          {b.state === "finalizada" && state === b.state ? "✓ " : ""}
-          {b.label}
+          {b.icon}
         </button>
       ))}
     </div>

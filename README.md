@@ -140,9 +140,10 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
     una salida ya cuenta en la agencia que lo recibe.
   - El botón `⤢`, junto al menú ⋯, pone la pantalla completa: en tableta
     quita la barra del navegador y se gana alto.
-  - En la cabecera de cada agencia, el estado va arriba a la derecha y justo
-    debajo COMPLETAS / CHECKLIST y los botones + y −. Con CHECKLIST cada fila
-    muestra solo el nombre resumen de la comunicación.
+  - La cabecera de cada agencia lleva a la derecha, en una sola línea de
+    botones cuadrados: estado (`○` cerrada, `●` abierta, `✓` finalizada),
+    vista (`☰` completas, `☑` solo checklist) y plegado (`+` y `−`). Con la
+    vista de checklist cada fila muestra solo el nombre resumen.
   - Dentro de cada agencia, las transmisiones van agrupadas por vuelo (y las
     dirigidas a todos, en su propio grupo). Los grupos salen siempre plegados
     al abrir la página; se despliegan pulsando su cabecera, y los botones + y −
