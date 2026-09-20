@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { AgencyChips } from "@/components/AgencyChips";
-import { BoardStrip } from "@/components/BoardStrip";
+import { BoardStrip, flightColor } from "@/components/BoardStrip";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import type { Move } from "@/components/FlightMenu";
 import { SplitDialog } from "@/components/SplitDialog";
@@ -545,10 +545,10 @@ export default function ControllerPage() {
       if (fk) flushSync(() => foldMany([fk], false));
       const el = document.querySelector<HTMLElement>(`[data-row="${key}"]`);
       const col = el?.closest<HTMLElement>("[data-col]");
-      if (!el || !col) return;
+      const scroller = el?.closest<HTMLElement>("[data-comms]");
+      if (!el || !col || !scroller) return;
       goTo(Number(col.dataset.col));
-      const sticky = col.querySelector("header")?.offsetHeight ?? 0;
-      col.scrollTop += el.getBoundingClientRect().top - col.getBoundingClientRect().top - sticky - 8;
+      scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
       setHighlight(key);
       clearTimeout(hlTimer.current);
       hlTimer.current = setTimeout(() => setHighlight(null), 1000);
@@ -567,6 +567,31 @@ export default function ControllerPage() {
     >;
   }, [data, boardState]);
   const currentPos = useMemo(() => currentPositions(data?.session.board?.zonas ?? {}, boardState), [data, boardState]);
+
+  /**
+   * Qué vuelos hay en cada agencia, para los puntos de las fichas de arriba.
+   * Un vuelo puesto en una salida ya se cuenta en la agencia que lo recibe.
+   */
+  const flightsAt = useMemo(() => {
+    const zonas = data?.session.board?.zonas ?? {};
+    const colores = data?.session.board?.colores;
+    const out: Record<string, { id: string; name: string; color: string }[]> = {};
+    for (const f of data?.flights ?? []) {
+      const cur = currentPos[f.id];
+      if (!cur) continue;
+      const zone = zonas[cur.agency]?.find((z) => z.id === cur.pos.zone);
+      let agency = cur.agency;
+      if (zone?.tipo === "salida") {
+        const ref = `${cur.agency}.${zone.id}`;
+        const heredera = Object.entries(zonas).find(([a, zs]) =>
+          a !== cur.agency && zs.some((z) => z.tipo === "entrada" && z.origen === ref),
+        );
+        agency = zone.destino?.split(".")[0] ?? heredera?.[0] ?? agency;
+      }
+      (out[agency] ??= []).push({ id: f.id, name: f.callsign, color: flightColor(f, colores) });
+    }
+    return out;
+  }, [data, currentPos]);
   const rows = useMemo(() => (data ? buildRows(data.steps, data.flights) : []), [data]);
   const groups = useMemo(() => groupByAgency(rows), [rows]);
   useMemo(() => {
@@ -637,13 +662,10 @@ export default function ControllerPage() {
               <div className="h-1 max-w-[240px] flex-1 bg-zinc-800">
                 <div className="h-full bg-ok" style={{ width: `${mine.pct}%` }} />
               </div>
-              <StatusCounts ok={mine.ok} warn={mine.warn} ko={mine.ko} na={mine.na} />
               <span className="hidden gap-3 border-l border-zinc-800 pl-3 md:flex">
                 {ROLES.filter((r) => r !== role).map((r) => (
                   <span key={r} className="kicker text-zinc-500">
                     <span className="text-zinc-300">{r}</span> {progress[r].pct}%
-                    {progress[r].warn > 0 && <span className="text-warn"> · {progress[r].warn} W</span>}
-                    {progress[r].ko > 0 && <span className="text-ko"> · {progress[r].ko} KO</span>}
                   </span>
                 ))}
               </span>
@@ -661,6 +683,7 @@ export default function ControllerPage() {
                 Reset
               </HeaderButton>
               <Menu code={code} railsOpen={railsOpen} onToggleRails={toggleRails} onRestoreFlights={restoreFlights} />
+              <FullScreenButton />
             </div>
           </div>
 
@@ -669,6 +692,7 @@ export default function ControllerPage() {
               states={agencyStates}
               role={role}
               current={groups[current]?.agency}
+              flightsAt={flightsAt}
               sessionVars={data.session.vars}
               onPress={(agency) => goTo(groups.findIndex((g) => g.agency === agency))}
             />
@@ -694,7 +718,7 @@ export default function ControllerPage() {
             <div
               key={g.agency}
               data-col={i}
-              className="h-full w-[min(46rem,calc(100vw-7rem))] shrink-0 snap-center overflow-y-auto"
+              className="h-full w-[min(46rem,calc(100vw-7rem))] shrink-0 snap-center overflow-hidden"
             >
               <AgencySection
                 group={g}
@@ -814,10 +838,10 @@ const AgencySection = memo(function AgencySection({
   const keys = flightGroups.map((g) => foldKey(group.agency, g.key));
   return (
     <section
-      className={`min-w-0 rounded-[2px] border border-zinc-800 bg-zinc-900/50 ${mine ? "" : "opacity-[0.55]"}`}
+      className={`flex h-full min-w-0 flex-col rounded-[2px] border border-zinc-800 bg-zinc-900/50 ${mine ? "" : "opacity-[0.55]"}`}
     >
       <header
-        className={`sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-2 ${
+        className={`flex shrink-0 items-start justify-between gap-x-3 gap-y-1 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-1.5 ${
           mine ? "border-l-gold" : "border-l-zinc-600"
         }`}
       >
@@ -830,15 +854,18 @@ const AgencySection = memo(function AgencySection({
             {agencyName(group.agency)}
           </h2>
         </div>
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
-          <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
-            +
-          </FoldButton>
-          <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
-            −
-          </FoldButton>
+        {/* Estado arriba del todo; justo debajo, vista y plegado. */}
+        <div className="flex min-w-0 flex-col items-end gap-1">
           <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+            <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
+            <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
+              +
+            </FoldButton>
+            <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
+              −
+            </FoldButton>
+          </div>
         </div>
       </header>
 
@@ -861,7 +888,8 @@ const AgencySection = memo(function AgencySection({
         onMerge={onMerge}
       />
 
-      <div className="divide-y divide-zinc-800">
+      {/* Solo las comunicaciones hacen scroll: el tablero se queda siempre a la vista. */}
+      <div data-comms className="min-h-0 flex-1 divide-y divide-zinc-800 overflow-y-auto">
         {flightGroups.map((fg) => {
           const key = foldKey(group.agency, fg.key);
           const isFolded = !expanded.has(key);
@@ -1085,6 +1113,31 @@ function Badge({ tone, children }: { tone: keyof typeof BADGE_TONES; children: R
     <span className={`kicker rounded-[2px] border px-1.5 py-[3px] text-[10px] whitespace-nowrap ${BADGE_TONES[tone]}`}>
       {children}
     </span>
+  );
+}
+
+/** Pantalla completa: en tableta quita la barra del navegador y se gana alto. */
+function FullScreenButton() {
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const onChange = () => setFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggle = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  };
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={full ? "Salir de pantalla completa" : "Pantalla completa"}
+      aria-label={full ? "Salir de pantalla completa" : "Pantalla completa"}
+      className="rounded-[2px] border border-zinc-700 px-2 py-[3px] text-[13px] leading-[16px] text-zinc-300 hover:border-gold hover:text-gold"
+    >
+      {full ? "⤡" : "⤢"}
+    </button>
   );
 }
 

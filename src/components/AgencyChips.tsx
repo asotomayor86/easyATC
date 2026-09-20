@@ -7,12 +7,15 @@ export function AgencyChips({
   states,
   role,
   current,
+  flightsAt,
   sessionVars,
   onPress,
 }: {
   states: Map<string, AgencyStateName>;
   role: Role;
   current?: string;
+  /** Vuelos que hay ahora en cada agencia: un punto de su color por vuelo. */
+  flightsAt: Record<string, { id: string; name: string; color: string }[]>;
   sessionVars: Vars;
   onPress: (agency: string) => void;
 }) {
@@ -49,6 +52,17 @@ export function AgencyChips({
               <span className={`kicker mt-0.5 block text-[10px] ${mine ? "text-zinc-300" : "text-zinc-500"}`}>
                 CH {agencyChannel(a.id, sessionVars)} ·{" "}
                 <span className={mine ? "text-gold" : ""}>{a.controlador}</span>
+              </span>
+              {/* Dónde está cada vuelo, de un vistazo. */}
+              <span className="mt-1 flex h-2 items-center gap-1">
+                {(flightsAt[a.id] ?? []).map((f) => (
+                  <span
+                    key={f.id}
+                    title={f.name}
+                    className="tint h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: f.color }}
+                  />
+                ))}
               </span>
             </span>
           </button>

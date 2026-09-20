@@ -111,6 +111,12 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
     agencia; los vuelos son pastillas que se arrastran (o se tocan y luego se
     toca el destino). Las entradas enlazadas muestran, en el mismo orden, los
     vuelos que la agencia anterior ha puesto en su salida, y no son editables.
+  - El tablero no se desplaza: solo hacen scroll las comunicaciones, debajo.
+    Para ganar sitio, el botón de la esquina superior derecha pliega una zona
+    a una sola línea —con los vuelos que tiene dentro, y en los stacks con el
+    nombre de su celda— y el de arriba del todo pliega el tablero entero.
+  - Al tocar (o pulsar) una pastilla se abre la ficha con su plan de vuelo, y
+    se cierra al tocarla otra vez; con ratón basta con pasar por encima.
   - Cada vuelo está en un único sitio: al sacarlo de una entrada enlazada
     desaparece de la agencia anterior.
   - Botón derecho (o pulsación larga en táctil) sobre una pastilla:
@@ -129,8 +135,14 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   Las nueve agencias van una al lado de otra: la de trabajo en el centro y
   las vecinas asomando a los lados. Se cambia con los botones laterales,
   deslizando, con las flechas ← → del teclado o pulsando su ficha arriba.
-  - En la cabecera de cada agencia, COMPLETAS / CHECKLIST: con CHECKLIST cada
-    fila muestra solo el nombre resumen de la comunicación.
+  - Cada ficha de agencia lleva debajo un punto por vuelo, del color del
+    vuelo: dice de un vistazo quién está en esa agencia. Un vuelo puesto en
+    una salida ya cuenta en la agencia que lo recibe.
+  - El botón `⤢`, junto al menú ⋯, pone la pantalla completa: en tableta
+    quita la barra del navegador y se gana alto.
+  - En la cabecera de cada agencia, el estado va arriba a la derecha y justo
+    debajo COMPLETAS / CHECKLIST y los botones + y −. Con CHECKLIST cada fila
+    muestra solo el nombre resumen de la comunicación.
   - Dentro de cada agencia, las transmisiones van agrupadas por vuelo (y las
     dirigidas a todos, en su propio grupo). Los grupos salen siempre plegados
     al abrir la página; se despliegan pulsando su cabecera, y los botones + y −

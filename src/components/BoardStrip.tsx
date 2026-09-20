@@ -76,6 +76,11 @@ export const BoardStrip = memo(function BoardStrip({
   const [selected, setSelected] = useState<string | null>(null);
   // Pastilla bajo el ratón: muestra la ficha con el plan de vuelo.
   const [hover, setHover] = useState<{ id: string; left: number; bottom: number } | null>(null);
+  // En táctil no hay ratón: al tocar una pastilla se abre su ficha hasta tocarla otra vez.
+  const [tapped, setTapped] = useState<{ id: string; left: number; bottom: number } | null>(null);
+  // Zonas plegadas a una línea, y el tablero entero plegado.
+  const [folded, setFolded] = useState<Set<string>>(new Set());
+  const [boardOpen, setBoardOpen] = useState(true);
   // Menú del botón derecho sobre una pastilla: enviar el vuelo a otra posición.
   const [menu, setMenu] = useState<MenuRequest | null>(null);
   // Pulsación larga en táctil: equivale al botón derecho.
@@ -101,6 +106,33 @@ export const BoardStrip = memo(function BoardStrip({
     const [zone, slot] = key.split("|");
     onMove(id, zone, slot || null);
     setSelected(null);
+    setTapped(null);
+  };
+
+  const toggleZone = (id: string) =>
+    setFolded((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  /** Vuelos de una zona, por hueco: en los stacks, con el nombre de la celda. */
+  const zoneItems = (z: Zone): { label?: string; items: Flight[] }[] => {
+    if (z.tipo === "stack") {
+      const off = new Set(z.excluidos ?? []);
+      const out: { label: string; items: Flight[] }[] = [];
+      for (const b of z.bloques ?? []) {
+        for (const pt of z.puntos ?? []) {
+          const cell = stackCell(pt, b);
+          if (off.has(cell)) continue;
+          const items = itemsAt(slotKey(z.id, cell));
+          if (items.length) out.push({ label: `${pt} · ${b}`, items });
+        }
+      }
+      return out;
+    }
+    const items = itemsAt(slotKey(z.id, null));
+    return items.length ? [{ items }] : [];
   };
 
   const pill = (f: Flight, index?: number) => {
@@ -121,6 +153,7 @@ export const BoardStrip = memo(function BoardStrip({
           e.preventDefault();
           setHover(null);
           setSelected(null);
+          setTapped(null);
           setMenu({ flight: f, x: e.clientX, y: e.clientY });
         }}
         onPointerDown={(e) => {
@@ -134,6 +167,7 @@ export const BoardStrip = memo(function BoardStrip({
             clearTimeout(longPress.current);
             longPress.current = setTimeout(() => {
               start.current = null;
+              setTapped(null);
               navigator.vibrate?.(15);
               setMenu({ flight: f, x: clientX, y: clientY });
             }, 500);
@@ -145,6 +179,7 @@ export const BoardStrip = memo(function BoardStrip({
           if (!s.dragging && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 6) return;
           clearTimeout(longPress.current);
           s.dragging = true;
+          setTapped(null);
           setDrag({ id: s.id, x: e.clientX, y: e.clientY });
           setOver(targetAt(e.clientX, e.clientY));
         }}
@@ -156,8 +191,12 @@ export const BoardStrip = memo(function BoardStrip({
           if (s.dragging) {
             const key = targetAt(e.clientX, e.clientY);
             if (key) moveTo(s.id, key);
+            setTapped(null);
           } else {
+            // Un toque (o un clic) selecciona la pastilla y abre su plan de vuelo.
+            const r = e.currentTarget.getBoundingClientRect();
             setSelected((cur) => (cur === s.id ? null : s.id));
+            setTapped((cur) => (cur?.id === s.id ? null : { id: s.id, left: r.left, bottom: r.bottom }));
           }
           setDrag(null);
           setOver(null);
@@ -213,50 +252,91 @@ export const BoardStrip = memo(function BoardStrip({
   };
 
   /** Entrada heredada: los vuelos de la salida anterior, en su orden. No se puede soltar nada en ella. */
-  const inheritedList = (zone: string, from: AgencyLayout["inherited"][string]) => {
+  const inheritedList = (zone: string) => {
     const items = itemsAt(slotKey(zone, null));
     return (
-      <>
-        <div className="flex min-h-[34px] flex-wrap content-start items-center gap-1.5 rounded-[2px] border border-zinc-800 bg-zinc-950/40 px-1.5 py-1">
-          {items.map((f, i) => pill(f, i + 1))}
-          {items.length === 0 && <span className="text-[11px] text-zinc-600">Aún no ha llegado ningún vuelo.</span>}
-        </div>
-        <p className="mt-1 text-[11px] text-zinc-500">
-          <span className="kicker mr-1.5 rounded-[2px] border border-zinc-700 px-1 py-[1px] text-[9px] text-zinc-400">No editable</span>
-          Heredada de {from.agency} · {from.name}: el orden lo decide el controlador anterior.
-        </p>
-      </>
+      <div className="flex min-h-[34px] flex-wrap content-start items-center gap-1.5 rounded-[2px] border border-zinc-800 bg-zinc-950/40 px-1.5 py-1">
+        {items.map((f, i) => pill(f, i + 1))}
+        {items.length === 0 && <span className="text-[11px] text-zinc-600">Aún no ha llegado ningún vuelo.</span>}
+      </div>
     );
   };
 
+  /** Los vuelos de una zona en una sola línea, cuando está plegada. */
+  const oneLine = (groups: { label?: string; items: Flight[] }[], numbered = false) =>
+    groups.length === 0 ? (
+      <span className="text-[11px] text-zinc-600">Vacío</span>
+    ) : (
+      groups.map((g, i) => (
+        <span key={g.label ?? i} className="flex shrink-0 items-center gap-1.5">
+          {g.label && <span className="kicker text-[9px] text-zinc-500">{g.label}</span>}
+          {g.items.map((f, j) => pill(f, numbered ? j + 1 : undefined))}
+        </span>
+      ))
+    );
+
+  const poolKey = slotKey(POOL_ZONE, null);
+  const allGroups = [
+    ...(layout.slots[poolKey] ? [{ items: itemsAt(poolKey) }] : []),
+    ...zones.flatMap((z) => zoneItems(z)),
+  ].filter((g) => g.items.length > 0);
+
   return (
-    <div ref={root} className="border-b border-zinc-800 bg-zinc-950/60 px-3 py-2.5">
-      {/* Una zona debajo de otra, cada una a todo el ancho de la agencia. */}
-      <div className="flex flex-col gap-2">
-        {layout.slots[slotKey(POOL_ZONE, null)] && (
-          <Box kind="Sin ubicar" name="Esta agencia no tiene entrada" tone="border-l-zinc-600 text-zinc-400">
-            {drop(POOL_ZONE, null)}
-          </Box>
-        )}
-        {zones.map((z) => (
-          <Box key={z.id} kind={KIND_LABEL[z.tipo]} name={z.nombre || z.id} tone={KIND_TONE[z.tipo]}>
-            {z.tipo === "entrada" &&
-              (layout.inherited[z.id] ? inheritedList(z.id, layout.inherited[z.id]) : drop(z.id, null, { minH: "min-h-[34px]" }))}
-
-            {z.tipo === "salida" && (
-              <>
-                {drop(z.id, null, { numbered: true, minH: "min-h-[34px]" })}
-                {z.destino && <p className="mt-1 text-[11px] text-zinc-500">→ {z.destino}</p>}
-              </>
-            )}
-
-            {z.tipo === "stack" && <StackGrid zone={z} drop={drop} />}
-
-            {/* Como una salida: los vuelos se numeran por orden de llegada. */}
-            {z.tipo === "secuencia" && drop(z.id, null, { numbered: true, minH: "min-h-[34px]" })}
-          </Box>
-        ))}
+    <div ref={root} data-board className="shrink-0 border-b border-zinc-800 bg-zinc-950/60 px-3 py-2.5">
+      <div className="mb-1.5 flex items-center gap-2">
+        <p className="kicker shrink-0 text-[10px] text-zinc-500">Tablero</p>
+        {!boardOpen && <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{oneLine(allGroups)}</div>}
+        <Fold
+          open={boardOpen}
+          onToggle={() => setBoardOpen((v) => !v)}
+          label={boardOpen ? "Plegar el tablero entero" : "Desplegar el tablero"}
+          className={boardOpen ? "ml-auto" : ""}
+        />
       </div>
+
+      {/* Una zona debajo de otra, cada una a todo el ancho de la agencia. */}
+      {boardOpen && (
+        <div className="flex flex-col gap-2">
+          {layout.slots[poolKey] && (
+            <Box
+              kind="Sin ubicar"
+              name="Esta agencia no tiene entrada"
+              tone="border-l-zinc-600 text-zinc-400"
+              open={!folded.has(POOL_ZONE)}
+              onToggle={() => toggleZone(POOL_ZONE)}
+              line={oneLine(itemsAt(poolKey).length ? [{ items: itemsAt(poolKey) }] : [])}
+            >
+              {drop(POOL_ZONE, null)}
+            </Box>
+          )}
+          {zones.map((z) => (
+            <Box
+              key={z.id}
+              kind={KIND_LABEL[z.tipo]}
+              name={z.nombre || z.id}
+              tone={KIND_TONE[z.tipo]}
+              open={!folded.has(z.id)}
+              onToggle={() => toggleZone(z.id)}
+              line={oneLine(zoneItems(z), z.tipo === "salida" || z.tipo === "secuencia" || !!layout.inherited[z.id])}
+              note={
+                layout.inherited[z.id]
+                  ? `No editable, heredada de ${layout.inherited[z.id].agency} · ${layout.inherited[z.id].name}`
+                  : undefined
+              }
+            >
+              {z.tipo === "entrada" &&
+                (layout.inherited[z.id] ? inheritedList(z.id) : drop(z.id, null, { minH: "min-h-[34px]" }))}
+
+              {z.tipo === "salida" && drop(z.id, null, { numbered: true, minH: "min-h-[34px]" })}
+
+              {z.tipo === "stack" && <StackGrid zone={z} drop={drop} />}
+
+              {/* Como una salida: los vuelos se numeran por orden de llegada. */}
+              {z.tipo === "secuencia" && drop(z.id, null, { numbered: true, minH: "min-h-[34px]" })}
+            </Box>
+          ))}
+        </div>
+      )}
       {selected && (
         <p className="mt-1.5 text-[11px] text-gold">
           Toca la zona de destino para mover la pastilla, o tócala otra vez para soltarla.
@@ -294,13 +374,13 @@ export const BoardStrip = memo(function BoardStrip({
             />
           )}
 
-          {hover &&
-            !drag &&
+          {!drag &&
             !menu &&
             (() => {
-              const f = flights.find((x) => x.id === hover.id);
-              return f ? (
-                <FlightPlanCard flight={f} sessionVars={sessionVars} planOrder={planOrder} formatTime={formatTime} at={hover} />
+              const at = hover ?? tapped;
+              const f = at && flights.find((x) => x.id === at.id);
+              return at && f ? (
+                <FlightPlanCard flight={f} sessionVars={sessionVars} planOrder={planOrder} formatTime={formatTime} at={at} />
               ) : null;
             })()}
 
@@ -344,14 +424,68 @@ const KIND_TONE: Record<Zone["tipo"], string> = {
   salida: "border-l-zinc-500 text-zinc-300",
 };
 
-function Box({ kind, name, tone, children }: { kind: string; name: string; tone: string; children: React.ReactNode }) {
+/**
+ * Una zona del tablero. Plegada se queda en una sola línea, con los vuelos que
+ * tiene dentro: siguen siendo pastillas, así que se arrastran y se tocan igual.
+ */
+function Box({
+  kind,
+  name,
+  tone,
+  note,
+  open,
+  onToggle,
+  line,
+  children,
+}: {
+  kind: string;
+  name: string;
+  tone: string;
+  /** Aclaración corta al lado del nombre, en la misma línea. */
+  note?: string;
+  open: boolean;
+  onToggle: () => void;
+  line: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className={`w-full rounded-[2px] border border-l-4 border-zinc-800 bg-zinc-900/60 px-2.5 py-2 ${tone}`}>
-      <p className="kicker mb-1.5 text-[10px]">
-        {kind} · <span className="text-zinc-300">{name}</span>
-      </p>
-      {children}
+      <div className={`flex items-center gap-2 ${open ? "mb-1.5" : ""}`}>
+        <p className="kicker min-w-0 shrink-0 text-[10px]">
+          {kind} · <span className="text-zinc-300">{name}</span>
+          {note && <span className="ml-1.5 text-[10px] normal-case text-zinc-500">«{note}»</span>}
+        </p>
+        {!open && <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{line}</div>}
+        <Fold open={open} onToggle={onToggle} label={open ? `Plegar ${name}` : `Desplegar ${name}`} className={open ? "ml-auto" : ""} />
+      </div>
+      {open && children}
     </div>
+  );
+}
+
+/** Botón de plegar: siempre en la esquina superior derecha. */
+function Fold({
+  open,
+  onToggle,
+  label,
+  className = "",
+}: {
+  open: boolean;
+  onToggle: () => void;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={label}
+      aria-label={label}
+      aria-expanded={open}
+      className={`shrink-0 rounded-[2px] border border-zinc-700 px-1.5 text-[11px] leading-[18px] text-zinc-400 hover:border-gold hover:text-gold ${className}`}
+    >
+      {open ? "▾" : "▸"}
+    </button>
   );
 }
 
