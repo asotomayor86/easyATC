@@ -52,6 +52,7 @@ export const BoardStrip = memo(function BoardStrip({
   onMoves,
   onSplit,
   onMerge,
+  open: boardOpen,
 }: {
   zones: Zone[];
   flights: Flight[];
@@ -72,15 +73,16 @@ export const BoardStrip = memo(function BoardStrip({
   onMoves: (moves: Move[]) => void;
   onSplit: (flight: Flight) => void;
   onMerge: (from: Flight, into: Flight) => void;
+  /** El tablero entero desplegado o plegado: se manda desde la cabecera. */
+  open: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   // Pastilla bajo el ratón: muestra la ficha con el plan de vuelo.
   const [hover, setHover] = useState<{ id: string; left: number; bottom: number } | null>(null);
   // En táctil no hay ratón: al tocar una pastilla se abre su ficha hasta tocarla otra vez.
   const [tapped, setTapped] = useState<{ id: string; left: number; bottom: number } | null>(null);
-  // Zonas plegadas a una línea, y el tablero entero plegado.
+  // Zonas plegadas a una línea.
   const [folded, setFolded] = useState<Set<string>>(new Set());
-  const [boardOpen, setBoardOpen] = useState(true);
   // Menú del botón derecho sobre una pastilla: enviar el vuelo a otra posición.
   const [menu, setMenu] = useState<MenuRequest | null>(null);
   // Pulsación larga en táctil: equivale al botón derecho.
@@ -282,17 +284,14 @@ export const BoardStrip = memo(function BoardStrip({
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div ref={root} data-board className="shrink-0 border-b border-zinc-800 bg-zinc-950/60 px-3 py-2.5">
-      <div className="mb-1.5 flex items-center gap-2">
-        <p className="kicker shrink-0 text-[10px] text-zinc-500">Tablero</p>
-        {!boardOpen && <div className="no-bar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{oneLine(allGroups)}</div>}
-        <Fold
-          open={boardOpen}
-          onToggle={() => setBoardOpen((v) => !v)}
-          label={boardOpen ? "Plegar el tablero entero" : "Desplegar el tablero"}
-          className={boardOpen ? "ml-auto" : ""}
-        />
-      </div>
+    <div ref={root} data-board className="shrink-0 border-b border-zinc-800 bg-zinc-950/60 px-3 py-2">
+      {/* Plegado del todo: una sola línea con los vuelos y dónde están. */}
+      {!boardOpen && (
+        <div className="flex items-center gap-2">
+          <p className="kicker shrink-0 text-[10px] text-zinc-500">Tablero</p>
+          <div className="no-bar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">{oneLine(allGroups)}</div>
+        </div>
+      )}
 
       {/* Una zona debajo de otra, cada una a todo el ancho de la agencia. */}
       {boardOpen && (

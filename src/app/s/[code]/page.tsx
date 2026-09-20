@@ -841,12 +841,14 @@ const AgencySection = memo(function AgencySection({
 }) {
   const flightGroups = groupByFlight(group.rows);
   const keys = flightGroups.map((g) => foldKey(group.agency, g.key));
+  // El tablero entero, desde la cabecera: así todo el plegado está en un sitio.
+  const [boardOpen, setBoardOpen] = useState(true);
   return (
     <section
       className={`flex h-full min-w-0 flex-col rounded-[2px] border border-zinc-800 bg-zinc-900/50 ${mine ? "" : "opacity-[0.55]"}`}
     >
       <header
-        className={`flex shrink-0 items-center justify-between gap-x-3 gap-y-1 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-1.5 ${
+        className={`flex shrink-0 items-start justify-between gap-x-3 gap-y-1 border-b border-l-4 border-zinc-800 bg-zinc-900 px-3 py-1.5 ${
           mine ? "border-l-gold" : "border-l-zinc-600"
         }`}
       >
@@ -859,16 +861,28 @@ const AgencySection = memo(function AgencySection({
             {agencyName(group.agency)}
           </h2>
         </div>
-        {/* Todo en una línea: estado, vista y plegado, en botones cuadrados. */}
-        <div className="flex shrink-0 items-center gap-1.5">
-          <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
-          <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
-          <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
-            +
-          </FoldButton>
-          <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
-            −
-          </FoldButton>
+        {/* Tres grupos con su rótulo, alineados con la primera línea de la izquierda. */}
+        <div className="flex shrink-0 items-start gap-3">
+          <ButtonGroup label="Estado">
+            <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
+          </ButtonGroup>
+          <ButtonGroup label="Comms">
+            <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
+            <FoldButton label="Desplegar todos los grupos" onClick={() => onFoldMany(keys, false)}>
+              +
+            </FoldButton>
+            <FoldButton label="Plegar todos los grupos" onClick={() => onFoldMany(keys, true)}>
+              −
+            </FoldButton>
+          </ButtonGroup>
+          <ButtonGroup label="Tab">
+            <FoldButton
+              label={boardOpen ? "Plegar el tablero" : "Desplegar el tablero"}
+              onClick={() => setBoardOpen((v) => !v)}
+            >
+              {boardOpen ? "⊟" : "⊞"}
+            </FoldButton>
+          </ButtonGroup>
         </div>
       </header>
 
@@ -889,6 +903,7 @@ const AgencySection = memo(function AgencySection({
         onMoves={onMoves}
         onSplit={onSplit}
         onMerge={onMerge}
+        open={boardOpen}
       />
 
       {/* Solo las comunicaciones hacen scroll: el tablero se queda siempre a la vista. */}
@@ -1058,6 +1073,16 @@ function ViewSwitch({ checklist, onChange }: { checklist: boolean; onChange: (ch
     <div role="group" aria-label="Vista de la agencia" className="flex">
       {item(!checklist, "Transmisiones completas", "☰", false, true)}
       {item(checklist, "Solo checklist", "☑", true, false)}
+    </div>
+  );
+}
+
+/** Botones de la cabecera con su rótulo encima, a la altura de la primera línea. */
+function ButtonGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-[3px]">
+      <span className="kicker text-[10px] leading-none text-zinc-500">{label}</span>
+      <div className="flex items-center gap-1.5">{children}</div>
     </div>
   );
 }
