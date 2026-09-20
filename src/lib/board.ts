@@ -314,7 +314,7 @@ export function currentPositions(zonas: Record<string, Zone[]>, state: BoardStat
  * Principio de la cadena: la primera agencia (por fase) con una entrada que no
  * hereda de nadie. Ahí empiezan los vuelos que nadie ha movido todavía.
  */
-function chainStart(zonas: Record<string, Zone[]>) {
+export function chainStart(zonas: Record<string, Zone[]>) {
   for (const a of AGENCY_LIST) {
     const zones = zonas[a.id] ?? [];
     if (zones.length === 0) continue;

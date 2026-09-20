@@ -14,6 +14,7 @@ import { StatusCounts } from "@/components/StatusCounts";
 import { StepRow, wallTime, type SetStatus } from "@/components/StepRow";
 import { isPaused, missionTime, parseClock, type Pause } from "@/lib/mission";
 import {
+  chainStart,
   currentPositions,
   layoutAgency,
   type AgencyLayout,
@@ -576,9 +577,14 @@ export default function ControllerPage() {
     const zonas = data?.session.board?.zonas ?? {};
     const colores = data?.session.board?.colores;
     const out: Record<string, { id: string; name: string; color: string }[]> = {};
+    // Los que aún no se han movido están donde empieza la cadena de agencias.
+    const inicio = chainStart(zonas)?.agency;
     for (const f of data?.flights ?? []) {
       const cur = currentPos[f.id];
-      if (!cur) continue;
+      if (!cur) {
+        if (inicio) (out[inicio] ??= []).push({ id: f.id, name: f.callsign, color: flightColor(f, colores) });
+        continue;
+      }
       const zone = zonas[cur.agency]?.find((z) => z.id === cur.pos.zone);
       let agency = cur.agency;
       if (zone?.tipo === "salida") {

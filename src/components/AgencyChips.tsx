@@ -54,7 +54,7 @@ export function AgencyChips({
                 <span className={mine ? "text-gold" : ""}>{a.controlador}</span>
               </span>
               {/* Dónde está cada vuelo, de un vistazo. */}
-              <span className="mt-1 flex h-2 items-center gap-1">
+              <span className="mt-1 flex min-h-2 flex-wrap items-center gap-1">
                 {(flightsAt[a.id] ?? []).map((f) => (
                   <span
                     key={f.id}
