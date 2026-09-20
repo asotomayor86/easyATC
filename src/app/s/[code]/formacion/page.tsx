@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Nav } from "@/components/Nav";
 
 /**
@@ -31,6 +32,13 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
           avance de los otros dos controladores en porcentaje, para saber si van contigo o retrasados. A la derecha
           están los botones de la misión: <Key>▶ INICIO</Key>, los rieles, <Key>RESET</Key>, el menú <Key>⋯</Key> y la
           pantalla completa.
+          <Shot
+            src="barra"
+            w={2560}
+            h={220}
+            alt="Barra de sesión con el código, el puesto C1, el reloj de misión y las nueve fichas de agencia"
+            pie="Autorizaciones abierta (punto verde) con tres vuelos dentro; el cuarto ya cuenta en Rodadura porque está en la salida."
+          />
         </Item>
         <Item title="Fichas de las nueve agencias">
           Una ficha por agencia, siempre en el orden del ejercicio. Cada una dice su canal y qué controlador la lleva;
@@ -44,6 +52,13 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
           error, gris no aplica. Es el resumen de toda la misión de un golpe de vista; pulsando un punto saltas a esa
           transmisión, aunque esté en otra agencia. Se muestran y se ocultan con su botón de la barra, al lado de
           INICIO: ocúltalos cuando necesites alto en pantalla.
+          <Shot
+            src="rieles"
+            w={2560}
+            h={190}
+            alt="Rieles: una fila por vuelo con un punto por transmisión, en verde, ámbar, rojo y gris"
+            pie="Cada punto es una transmisión. A la derecha, el recuento de cada vuelo."
+          />
         </Item>
         <Item title="Columna de la agencia">
           Las agencias van una al lado de otra, con la de trabajo en el centro y las vecinas asomando. Te mueves con
@@ -64,6 +79,7 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
             <Key>⊟</Key> pliega el tablero entero y <Key>⊞</Key> lo devuelve. Plegado se queda en una línea con los
             vuelos y dónde están, y las comunicaciones ganan toda esa altura.
           </Group>
+          <Shot src="cabecera" w={1468} h={104} alt="Cabecera de la agencia con los grupos Estado, Comms y Tab" />
         </Item>
         <Item title="Tablero de la agencia">
           Va fijo bajo la cabecera: no se desplaza, siempre está a la vista. Cada zona es una caja a todo el ancho:
@@ -83,6 +99,20 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
           </ul>
           Cada zona se pliega a una sola línea con el botón de su esquina superior derecha, conservando dentro sus
           vuelos (en los stacks, con el nombre de su celda). Es la forma de quitar altura sin perder de vista nada.
+          <Shot
+            src="tablero"
+            w={1468}
+            h={902}
+            alt="Tablero de Autorizaciones: entrada, dos stacks y una salida, con los vuelos como pastillas"
+            pie="Poker espera en la entrada, Dardo y Ebro están en el stack y Marte ya va el 1.º en la salida."
+          />
+          <Shot
+            src="plegado"
+            w={1468}
+            h={78}
+            alt="El mismo tablero plegado en una sola línea con los cuatro vuelos"
+            pie="El mismo tablero plegado: 39 px en lugar de 451, sin perder de vista dónde está cada vuelo."
+          />
         </Item>
         <Item title="Comunicaciones">
           Debajo del tablero, y es lo único que hace scroll. Van agrupadas por vuelo —y las dirigidas a todas las
@@ -91,6 +121,13 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
           <span className="text-gold">{"{variables}"}</span> ya sustituidas; lo que aparece en gris entre corchetes se
           rellena de viva voz. Una etiqueta <b className="text-alt">Alternativa</b> marca las que solo se usan a veces
           y <b className="text-coord">Coordinación</b> las que son entre controladores.
+          <Shot
+            src="comunicaciones"
+            w={1468}
+            h={322}
+            alt="Grupo de transmisiones de un vuelo, con los botones de marcar y el texto del piloto y del controlador"
+            pie="En rojizo lo que dice el piloto y en claro lo que dices tú. A la derecha, la marca y su hora de misión."
+          />
         </Item>
       </Section>
 
@@ -152,6 +189,22 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
             </li>
           </Card>
         </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Shot
+            src="plan"
+            w={760}
+            h={428}
+            alt="Ficha con el plan de vuelo de un vuelo, colgando de su pastilla"
+            pie="Clic izquierdo en una pastilla: sale su plan de vuelo, con las variables numeradas en Variables → Plan."
+          />
+          <Shot
+            src="menu"
+            w={1086}
+            h={768}
+            alt="Menú del clic derecho sobre una pastilla, con el submenú de Enviar a abierto"
+            pie="Clic derecho: dividir, combinar o enviar el vuelo a la entrada de otra agencia."
+          />
+        </div>
         <p className="mt-4 text-[15px] text-zinc-400">
           <b className="text-zinc-200">En tableta:</b> tocar es el clic izquierdo y mantener el dedo medio segundo
           sobre una pastilla abre el mismo menú del clic derecho. Las divisiones y las combinaciones no se deshacen con
@@ -194,6 +247,22 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
         </Item>
       </Section>
     </main>
+  );
+}
+
+/** Captura de pantalla con su pie, al ancho de la tarjeta. */
+function Shot({ src, w, h, alt, pie }: { src: string; w: number; h: number; alt: string; pie?: string }) {
+  return (
+    <figure className="mt-3">
+      <Image
+        src={`/formacion/${src}.png`}
+        width={w}
+        height={h}
+        alt={alt}
+        className="w-full rounded-[2px] border border-zinc-800"
+      />
+      {pie && <figcaption className="mt-1.5 text-[13px] text-zinc-500">{pie}</figcaption>}
+    </figure>
   );
 }
 
