@@ -7,8 +7,9 @@ Next.js 15 · Tailwind · Neon Postgres · Drizzle. Sin cuentas: quien tenga el
 código de sesión, entra.
 
 Historia, arquitectura y operación:
-[docs/SESION-2026-09-18.md](docs/SESION-2026-09-18.md) (base de la aplicación) y
-[docs/SESION-2026-09-19.md](docs/SESION-2026-09-19.md) (tablero y plan de vuelo).
+[docs/SESION-2026-09-18.md](docs/SESION-2026-09-18.md) (base de la aplicación),
+[docs/SESION-2026-09-19.md](docs/SESION-2026-09-19.md) (tablero y plan de vuelo) y
+[docs/SESION-2026-09-20.md](docs/SESION-2026-09-20.md) (uso en tableta y formación).
 
 ## Puesta en marcha
 
@@ -99,6 +100,9 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   Cada una tiene además un nombre resumen para la checklist y la casilla
   «Cuenta para rieles y estadísticas»: si se desmarca, desaparece de los
   rieles y de todos los recuentos (sigue en su agencia y se puede marcar).
+- **`/s/CODIGO/formacion`** — hoja de formación para el controlador: qué es
+  cada cosa de la pantalla, cómo se trabaja durante el ejercicio, qué hace
+  cada botón del ratón y qué se prepara antes. Con capturas.
 - **`/s/CODIGO/tablero`** — zonas de cada agencia para seguir los vuelos
   durante el ejercicio: entradas, stacks (rejilla de puntos × bloques, p. ej.
   Norte/Este × FL080/FL090/FL100, con celdas que se pueden desactivar),
