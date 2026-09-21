@@ -12,7 +12,7 @@ const optional = (v: unknown) => {
   return s === "" ? null : s;
 };
 
-/** Cuerpo: cualquiera de { pilotText, atcText, readbackText, checklist, counts }. */
+/** Cuerpo: cualquiera de { pilotText, atcText, readbackText, checklist, counts, alt }. */
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code, id } = await params;
   if (!UUID_RE.test(id)) return json({ error: "Paso no encontrado" }, 404);
@@ -25,6 +25,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if ("atcText" in body) patch.atcText = String(body.atcText ?? "").trim();
   if ("checklist" in body) patch.checklist = String(body.checklist ?? "").trim();
   if ("counts" in body) patch.counts = body.counts !== false;
+  if ("alt" in body) patch.alt = body.alt === true;
   if (Object.keys(patch).length === 0) return badRequest("Nada que guardar");
 
   const session = await findSession(code);

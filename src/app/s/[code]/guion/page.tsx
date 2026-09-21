@@ -99,8 +99,8 @@ export default function GuionPage() {
                   <Tag>{s.scope === "vuelo" ? "por vuelo" : "a todos"}</Tag>
                   <Tag>inicia: {s.initiator}</Tag>
                   <span className="text-zinc-500">{s.eta}</span>
-                  {s.alt && <Tag tone="alt">alternativa</Tag>}
-                  <CountsToggle code={code} step={s} />
+                  <BoolToggle code={code} step={s} field="alt" label="Alternativa" tone="text-alt" />
+                  <BoolToggle code={code} step={s} field="counts" label="Cuenta para rieles y estadísticas" />
                   {s.note && <span className="text-zinc-400 italic">{s.note}</span>}
                   <span className="ml-auto flex gap-1.5">
                     <button
@@ -153,12 +153,25 @@ export default function GuionPage() {
   );
 }
 
-/** Casilla «cuenta para rieles y estadísticas»: se guarda al pulsarla. */
-function CountsToggle({ code, step }: { code: string; step: Step }) {
-  const [on, setOn] = useState(step.counts);
+/** Casilla de sí o no de una comunicación («alternativa», «cuenta»): se guarda al pulsarla. */
+function BoolToggle({
+  code,
+  step,
+  field,
+  label,
+  tone = "text-zinc-300",
+}: {
+  code: string;
+  step: Step;
+  field: "counts" | "alt";
+  label: string;
+  /** Color de la etiqueta cuando está marcada. */
+  tone?: string;
+}) {
+  const [on, setOn] = useState(step[field]);
   const [failed, setFailed] = useState(false);
   return (
-    <label className={`kicker flex cursor-pointer items-center gap-1.5 text-[10px] ${on ? "text-zinc-300" : "text-zinc-500"}`}>
+    <label className={`kicker flex cursor-pointer items-center gap-1.5 text-[10px] ${on ? tone : "text-zinc-500"}`}>
       <input
         type="checkbox"
         checked={on}
@@ -167,7 +180,7 @@ function CountsToggle({ code, step }: { code: string; step: Step }) {
           setOn(v);
           setFailed(false);
           try {
-            await api(`/api/s/${code}/steps/${step.id}`, "PATCH", { counts: v });
+            await api(`/api/s/${code}/steps/${step.id}`, "PATCH", { [field]: v });
           } catch {
             setOn(!v);
             setFailed(true);
@@ -175,22 +188,14 @@ function CountsToggle({ code, step }: { code: string; step: Step }) {
         }}
         className="h-3.5 w-3.5 accent-[var(--color-gold)]"
       />
-      Cuenta para rieles y estadísticas
+      {label}
       {failed && <span className="text-ko">· no se guardó</span>}
     </label>
   );
 }
 
-function Tag({ children, tone }: { children: React.ReactNode; tone?: "alt" }) {
-  return (
-    <span
-      className={`kicker rounded-[2px] px-1.5 py-0.5 text-[10px] ${
-        tone === "alt" ? "border border-alt/70 text-alt" : "bg-zinc-800 text-zinc-300"
-      }`}
-    >
-      {children}
-    </span>
-  );
+function Tag({ children }: { children: React.ReactNode }) {
+  return <span className="kicker rounded-[2px] bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">{children}</span>;
 }
 
 function Field({ label, tone, children }: { label: string; tone: string; children: React.ReactNode }) {

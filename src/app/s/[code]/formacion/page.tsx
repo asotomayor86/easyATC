@@ -240,11 +240,12 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
           todos los vuelos.
         </Item>
         <Item title="Guion">
-          Los textos de cada transmisión: piloto, controlador y colación, con su agencia, controlador, hora y si es
-          alternativa. Son plantillas: escribe <span className="text-gold">{"{variable}"}</span> y se sustituye sola en
-          cada vuelo. Cada comunicación lleva además un nombre resumen —el que se ve en la vista de checklist— y la
-          casilla «cuenta para rieles y estadísticas», que si se desmarca la deja fuera de todos los recuentos sin
-          quitarla de la agencia. También se pueden añadir y quitar comunicaciones.
+          Los textos de cada transmisión: piloto, controlador y colación, con su agencia, controlador y hora. Son
+          plantillas: escribe <span className="text-gold">{"{variable}"}</span> y se sustituye sola en cada vuelo.
+          Cada comunicación lleva además un nombre resumen —el que se ve en la vista de checklist— y dos casillas que
+          se pueden marcar y desmarcar cuando quieras: «alternativa», que la señala como opcional, y «cuenta para
+          rieles y estadísticas», que si se desmarca la deja fuera de todos los recuentos sin quitarla de la agencia.
+          También se pueden añadir y quitar comunicaciones.
         </Item>
         <Item title="Tablero">
           Las zonas de cada agencia: entradas, stacks, secuencias y salidas. Una salida se enlaza con la entrada de

@@ -97,9 +97,12 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   cambio se aplica a los cuatro vuelos de esa sesión, y solo a esa sesión.
   Cada comunicación tiene «+ Añadir debajo» (crea una nueva con la misma
   agencia, controlador y hora, y textos vacíos) y «Quitar».
-  Cada una tiene además un nombre resumen para la checklist y la casilla
-  «Cuenta para rieles y estadísticas»: si se desmarca, desaparece de los
-  rieles y de todos los recuentos (sigue en su agencia y se puede marcar).
+  Cada una tiene además un nombre resumen para la checklist y dos casillas:
+  «Alternativa», que la marca como opcional (etiqueta violeta en la vista del
+  controlador), y «Cuenta para rieles y estadísticas», que si se desmarca la
+  deja fuera de los rieles y de todos los recuentos, sin sacarla de su agencia.
+  Las dos se activan y se desactivan en cualquier momento, también en los
+  guiones ya escritos.
 - **`/s/CODIGO/formacion`** — hoja de formación para el controlador: qué es
   cada cosa de la pantalla, cómo se trabaja durante el ejercicio, qué hace
   cada botón del ratón y qué se prepara antes. Con capturas.
