@@ -38,12 +38,15 @@ import {
   type Progress,
 } from "@/lib/progress";
 import {
+  isObserver,
+  OBSERVER,
   ROLES,
   type AgencyStateName,
   type Flight,
   type Mark,
   type MarkStatus,
   type Role,
+  type Seat,
   type StateData,
   type Step,
   type Vars,
@@ -73,19 +76,19 @@ export default function ControllerPage() {
 
   // --- Rol, guardado por sesión en localStorage ---
   const roleKey = `easyatc:role:${code}`;
-  const [role, setRoleState] = useState<Role | null>(null);
+  const [role, setRoleState] = useState<Seat | null>(null);
   const [roleLoaded, setRoleLoaded] = useState(false);
   const [railsOpen, setRailsOpen] = useState(true);
   useEffect(() => {
     try {
       const r = localStorage.getItem(roleKey);
-      if (r && (ROLES as string[]).includes(r)) setRoleState(r as Role);
+      if (r && [...ROLES, OBSERVER].includes(r)) setRoleState(r as Seat);
       const rails = localStorage.getItem("easyatc:rails");
       setRailsOpen(rails ? rails === "1" : true);
     } catch {}
     setRoleLoaded(true);
   }, [roleKey]);
-  const setRole = (r: Role | null) => {
+  const setRole = (r: Seat | null) => {
     setRoleState(r);
     try {
       if (r) localStorage.setItem(roleKey, r);
@@ -109,7 +112,7 @@ export default function ControllerPage() {
   const agencyOv = useOverrides<AgencyStateName>();
   const [serverBoard, setServerBoard] = useState<BoardState>({});
   const boardOv = useOverrides<BoardPos>();
-  const [presence, setPresence] = useState<Record<Role, number>>({ C1: 0, C2: 0, C3: 0 });
+  const [presence, setPresence] = useState<Record<Seat, number>>({ C1: 0, C2: 0, C3: 0, OBS: 0 });
   const [offline, setOffline] = useState(false);
   const [synced, setSynced] = useState(false);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -126,6 +129,10 @@ export default function ControllerPage() {
   const lastContent = useRef<string | null>(null);
   const roleRef = useRef(role);
   roleRef.current = role;
+  // El observador mira y se mueve por la aplicación, pero no cambia nada.
+  const observer = isObserver(role);
+  const obsRef = useRef(observer);
+  obsRef.current = observer;
   const { prune: pruneMarks } = markOv;
   const { prune: pruneAgencies } = agencyOv;
   const { prune: pruneBoard } = boardOv;
@@ -162,7 +169,9 @@ export default function ControllerPage() {
       lastContent.current = st.contentAt;
 
       setPresence((p) =>
-        p.C1 === st.presence.C1 && p.C2 === st.presence.C2 && p.C3 === st.presence.C3 ? p : st.presence,
+        p.C1 === st.presence.C1 && p.C2 === st.presence.C2 && p.C3 === st.presence.C3 && p.OBS === st.presence.OBS
+          ? p
+          : st.presence,
       );
       pruneMarks(started);
       pruneAgencies(started);
@@ -211,6 +220,7 @@ export default function ControllerPage() {
   const { begin: beginMark, settle: settleMark, fail: failMark } = markOv;
   const applyMark = useCallback(
     async (step: Step, flight: Flight | null, status: MarkStatus | null) => {
+      if (obsRef.current) return;
       const r = roleRef.current ?? "C1";
       const k = rowKey(step.id, flight?.id ?? null);
       const mark: Mark | null = status
@@ -231,6 +241,7 @@ export default function ControllerPage() {
 
   const onSet: SetStatus = useCallback(
     (step, flight, status) => {
+      if (obsRef.current) return;
       if (step.controller === roleRef.current) return void applyMark(step, flight, status);
       setConfirm({
         message: `Esta transmisión es de ${step.controller} (${agencyName(step.agency)}). ¿${
@@ -246,6 +257,7 @@ export default function ControllerPage() {
   const { begin: beginAgency, settle: settleAgency, fail: failAgency } = agencyOv;
   const applyAgency = useCallback(
     async (agency: string, state: AgencyStateName) => {
+      if (obsRef.current) return;
       const r = roleRef.current ?? "C1";
       const entry = beginAgency(agency, state);
       try {
@@ -262,6 +274,7 @@ export default function ControllerPage() {
 
   const onAgencySet = useCallback(
     (agency: string, next: AgencyStateName) => {
+      if (obsRef.current) return;
       const cur = agencyStates.get(agency) ?? "cerrada";
       if (cur === next) return;
       const owner = AGENCY_LIST.find((a) => a.id === agency)?.controlador;
@@ -278,6 +291,7 @@ export default function ControllerPage() {
   const { begin: beginBoard, settle: settleBoard, fail: failBoard } = boardOv;
   const moveFlight = useCallback(
     async (agency: string, flightId: string, zone: string, slot: string | null, at?: number) => {
+      if (obsRef.current) return;
       const pos: BoardPos = { zone, slot, at: at ?? serverNow() };
       const key = `${agency}|${flightId}`;
       const entry = beginBoard(key, pos);
@@ -288,6 +302,7 @@ export default function ControllerPage() {
           zone,
           slot,
           at: new Date(pos.at).toISOString(),
+          role: roleRef.current,
         });
         settleBoard(key, entry);
         poll();
@@ -311,6 +326,7 @@ export default function ControllerPage() {
   const [splitting, setSplitting] = useState<{ flight: Flight; agency: string } | null>(null);
   const flightAction = useCallback(
     async (path: string, body: Record<string, unknown>) => {
+      if (obsRef.current) return;
       try {
         await api(`/api/s/${code}/flights/${path}`, "POST", { ...body, role: roleRef.current ?? "C1" });
         await reload();
@@ -333,6 +349,13 @@ export default function ControllerPage() {
       }),
     [flightAction, serverNow],
   );
+  /** Standby: pone o quita la pausa de comunicación con un vuelo. */
+  const onStandby = useCallback(
+    (flight: Flight, on: boolean) =>
+      flightAction("standby", { flightId: flight.id, on, at: new Date(serverNow()).toISOString() }),
+    [flightAction, serverNow],
+  );
+
   const restoreFlights = () =>
     setConfirm({
       title: "Restaurar vuelos",
@@ -344,11 +367,12 @@ export default function ControllerPage() {
     });
 
   function reset() {
+    if (observer) return;
     setConfirm({
       message: "¿Borrar TODAS las marcas y cerrar todas las agencias? Las variables y los textos no se tocan.",
       confirmLabel: "Borrar",
       onConfirm: async () => {
-        await api(`/api/s/${code}/reset`, "POST");
+        await api(`/api/s/${code}/reset`, "POST", { role: roleRef.current });
         markOv.clear();
         agencyOv.clear();
         boardOv.clear();
@@ -361,6 +385,7 @@ export default function ControllerPage() {
   const restart = async () => {
     const r = await api<{ startedAt: string }>(`/api/s/${code}/start`, "POST", {
       at: new Date(serverNow()).toISOString(),
+      role: roleRef.current,
     });
     setStartedAt(r.startedAt);
     setPauses([]);
@@ -370,11 +395,13 @@ export default function ControllerPage() {
     const r = await api<{ pauses: Pause[] }>(`/api/s/${code}/pause`, "POST", {
       action,
       at: new Date(serverNow()).toISOString(),
+      role: roleRef.current,
     });
     setPauses(r.pauses);
     poll();
   };
   const startMission = () => {
+    if (observer) return;
     if (!startedAt)
       return setConfirm({
         message: "¿Iniciar la misión ahora? Púlsalo justo al quitar la pausa en DCS.",
@@ -610,11 +637,12 @@ export default function ControllerPage() {
     [rows, marks],
   );
 
-  const centeredFor = useRef<Role | null>(null);
+  const centeredFor = useRef<Seat | null>(null);
   useEffect(() => {
     if (!role || !synced || groups.length === 0 || centeredFor.current === role) return;
     centeredFor.current = role;
-    const key = progress[role].firstPendingKey;
+    // El observador no tiene agencias propias: empieza por la primera.
+    const key = role === OBSERVER ? null : progress[role].firstPendingKey;
     let idx = groups.findIndex((g) => g.rows.some((r) => r.key === key));
     if (idx < 0) idx = groups.findIndex((g) => g.controller === role);
     requestAnimationFrame(() => goTo(Math.max(0, idx), false));
@@ -649,11 +677,14 @@ export default function ControllerPage() {
             <span className="kicker rounded-[2px] border border-gold/60 px-1.5 py-[3px] text-gold">{code}</span>
             <button
               onClick={() => setRole(null)}
-              title="Cambiar de controlador"
-              className="rounded-[2px] border border-gold bg-gold px-2 py-[1px] font-cond text-[16px] font-bold text-zinc-950"
+              title="Cambiar de puesto"
+              className={`rounded-[2px] border px-2 py-[1px] font-cond text-[16px] font-bold ${
+                observer ? "border-zinc-500 text-zinc-200" : "border-gold bg-gold text-zinc-950"
+              }`}
             >
               {role} ▾
             </button>
+            {observer && <span className="kicker text-[10px] text-zinc-500">Solo mirar</span>}
             {presence[role] > 1 && (
               <span className="kicker text-[10px] text-missing">
                 {presence[role]} en {role}
@@ -663,7 +694,7 @@ export default function ControllerPage() {
 
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <span className="hidden gap-3 md:flex">
-                {ROLES.filter((r) => r !== role).map((r) => (
+                {ROLES.filter((r) => observer || r !== role).map((r) => (
                   <span key={r} className="kicker text-zinc-500">
                     <span className="text-zinc-300">{r}</span> {progress[r].pct}%
                   </span>
@@ -677,6 +708,7 @@ export default function ControllerPage() {
                 pauses={pauses}
                 base={missionBase}
                 offset={clockOffset}
+                disabled={observer}
                 onClick={startMission}
               />
               <IconButton
@@ -686,10 +718,10 @@ export default function ControllerPage() {
               >
                 <RailsIcon />
               </IconButton>
-              <HeaderButton onClick={reset} tone="ko">
+              <HeaderButton onClick={reset} tone="ko" disabled={observer}>
                 Reset
               </HeaderButton>
-              <Menu code={code} onRestoreFlights={restoreFlights} />
+              <Menu code={code} onRestoreFlights={observer ? null : restoreFlights} />
               <FullScreenButton />
             </div>
           </div>
@@ -729,7 +761,7 @@ export default function ControllerPage() {
             >
               <AgencySection
                 group={g}
-                mine={g.controller === role}
+                mine={observer || g.controller === role}
                 state={agencyStates.get(g.agency) ?? "cerrada"}
                 formatTime={formatTime}
                 sessionVars={data.session.vars}
@@ -748,6 +780,8 @@ export default function ControllerPage() {
                 current={currentPos}
                 onMoves={applyMoves}
                 onSplit={(f) => setSplitting({ flight: f, agency: g.agency })}
+                onStandby={onStandby}
+                readOnly={observer}
                 onMerge={onMerge}
                 expanded={expanded}
                 planOrder={data.session.planOrder}
@@ -804,6 +838,8 @@ const AgencySection = memo(function AgencySection({
   onMoves,
   onSplit,
   onMerge,
+  onStandby,
+  readOnly,
   expanded,
   planOrder,
   onToggleFold,
@@ -831,6 +867,9 @@ const AgencySection = memo(function AgencySection({
   onMoves: (moves: Move[]) => void;
   onSplit: (flight: Flight) => void;
   onMerge: (from: Flight, into: Flight) => void;
+  onStandby: (flight: Flight, on: boolean) => void;
+  /** Observador: ve todo, no cambia nada. */
+  readOnly: boolean;
   onMoveFlight: (agency: string, flightId: string, zone: string, slot: string | null) => void;
   /** Grupos de vuelo desplegados; los demás están plegados. */
   expanded: Set<string>;
@@ -866,7 +905,7 @@ const AgencySection = memo(function AgencySection({
         {/* Tres grupos con su rótulo, alineados con la primera línea de la izquierda. */}
         <div className="flex shrink-0 items-start gap-3">
           <ButtonGroup label="Estado">
-            <StateSwitch state={state} onChange={(st) => onSetState(group.agency, st)} />
+            <StateSwitch state={state} readOnly={readOnly} onChange={(st) => onSetState(group.agency, st)} />
           </ButtonGroup>
           <ButtonGroup label="Comms">
             <ViewSwitch checklist={checklistOnly} onChange={(c) => onSetView(group.agency, c)} />
@@ -905,6 +944,8 @@ const AgencySection = memo(function AgencySection({
         onMoves={onMoves}
         onSplit={onSplit}
         onMerge={onMerge}
+        onStandby={onStandby}
+        readOnly={readOnly}
         open={boardOpen}
       />
 
@@ -958,6 +999,7 @@ const AgencySection = memo(function AgencySection({
                           sessionVars={sessionVars}
                           highlighted={highlight === r.key}
                           onSet={onSet}
+                          readOnly={readOnly}
                           showCallsign={false}
                           formatTime={formatTime}
                           checklistOnly={checklistOnly}
@@ -1011,6 +1053,7 @@ function MissionButton({
   pauses,
   base,
   offset,
+  disabled,
   onClick,
 }: {
   startedAt: string | null;
@@ -1018,6 +1061,8 @@ function MissionButton({
   base: number | null;
   /** Desfase respecto al servidor, para que el reloj no dependa de la hora del ordenador. */
   offset: number;
+  /** El observador ve el reloj, pero no lo toca. */
+  disabled: boolean;
   onClick: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now() + offset);
@@ -1033,7 +1078,8 @@ function MissionButton({
       <button
         type="button"
         onClick={onClick}
-        className="kicker rounded-[2px] border border-ok bg-ok px-3 py-[7px] text-[11px] text-zinc-950 hover:bg-ok/85"
+        disabled={disabled}
+        className="kicker rounded-[2px] border border-ok bg-ok px-3 py-[7px] text-[11px] text-zinc-950 hover:bg-ok/85 disabled:opacity-40 disabled:hover:bg-ok"
       >
         ▶ Inicio
       </button>
@@ -1043,6 +1089,7 @@ function MissionButton({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       title={base === null ? "Define la variable inicio_mision para ver la hora de misión" : "Pausar, reanudar o reiniciar el reloj"}
       className={`flex items-baseline gap-1.5 rounded-[2px] border px-2.5 py-[5px] ${
         paused ? "border-warn bg-warn/10 hover:bg-warn/20" : "border-ok/60 hover:border-ok"
@@ -1124,7 +1171,15 @@ const STATE_BUTTONS: { state: AgencyStateName; label: string; icon: string; acti
   { state: "finalizada", label: "Finalizada", icon: "✓", active: "border-zinc-500 bg-zinc-800 text-zinc-300" },
 ];
 
-function StateSwitch({ state, onChange }: { state: AgencyStateName; onChange: (s: AgencyStateName) => void }) {
+function StateSwitch({
+  state,
+  onChange,
+  readOnly,
+}: {
+  state: AgencyStateName;
+  onChange: (s: AgencyStateName) => void;
+  readOnly: boolean;
+}) {
   return (
     <div role="group" aria-label="Estado de la agencia" className="flex">
       {STATE_BUTTONS.map((b, i) => (
@@ -1132,12 +1187,15 @@ function StateSwitch({ state, onChange }: { state: AgencyStateName; onChange: (s
           key={b.state}
           type="button"
           aria-pressed={state === b.state}
-          title={`Agencia ${b.label.toLowerCase()}`}
+          title={readOnly ? b.label : `Agencia ${b.label.toLowerCase()}`}
           aria-label={b.label}
+          disabled={readOnly}
           onClick={() => onChange(b.state)}
           className={`${SQUARE} ${i > 0 ? "-ml-px" : ""} ${
-            state === b.state ? `relative z-[1] ${b.active}` : "border-zinc-700 text-zinc-500 hover:text-zinc-200"
-          }`}
+            state === b.state
+              ? `relative z-[1] ${b.active}`
+              : `border-zinc-700 text-zinc-500 ${readOnly ? "opacity-50" : "hover:text-zinc-200"}`
+          } ${readOnly ? "cursor-default" : ""}`}
         >
           {b.icon}
         </button>
@@ -1261,8 +1319,8 @@ function RolePicker({
   name: string;
   code: string;
   progress: Record<Role, Progress>;
-  presence: Record<Role, number>;
-  onPick: (r: Role) => void;
+  presence: Record<Seat, number>;
+  onPick: (r: Seat) => void;
 }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-[60rem] flex-col justify-center gap-6 px-4 py-10">
@@ -1270,7 +1328,7 @@ function RolePicker({
         <p className="kicker text-gold">Sesión {code}</p>
         <h1 className="font-cond text-[34px] leading-tight font-extrabold uppercase">{name}</h1>
         <div className="mt-1 h-[3px] w-16 bg-gold" />
-        <p className="mt-3 text-zinc-400">¿Qué controlador eres?</p>
+        <p className="mt-3 text-zinc-400">¿Desde qué puesto entras?</p>
       </header>
       <div className="grid gap-3 sm:grid-cols-3">
         {ROLES.map((r) => {
@@ -1293,6 +1351,23 @@ function RolePicker({
           );
         })}
       </div>
+      <button
+        onClick={() => onPick(OBSERVER)}
+        className="flex items-center justify-between gap-4 rounded-[2px] border border-zinc-800 border-l-4 border-l-zinc-500 bg-zinc-900 px-4 py-3 text-left hover:border-zinc-600 hover:border-l-zinc-400"
+      >
+        <span>
+          <span className="block font-cond text-[24px] leading-none font-extrabold">Observador</span>
+          <span className="mt-1 block text-zinc-400">
+            Ves el ejercicio entero y te mueves por él, pero no puedes marcar, ni abrir agencias, ni mover vuelos.
+          </span>
+        </span>
+        {presence.OBS > 0 && (
+          <span className="kicker shrink-0 text-missing">
+            {presence.OBS === 1 ? "1 conectado" : `${presence.OBS} conectados`}
+          </span>
+        )}
+      </button>
+
       <div className="flex gap-4">
         <Link href={`/s/${code}/setup`} className="kicker text-zinc-400 hover:text-gold">
           Variables
@@ -1311,7 +1386,7 @@ function RolePicker({
   );
 }
 
-function Menu({ code, onRestoreFlights }: { code: string; onRestoreFlights: () => void }) {
+function Menu({ code, onRestoreFlights }: { code: string; onRestoreFlights: (() => void) | null }) {
   const item = "block w-full px-3 py-2.5 text-left hover:bg-zinc-800";
   return (
     <details className="relative">
@@ -1319,9 +1394,11 @@ function Menu({ code, onRestoreFlights }: { code: string; onRestoreFlights: () =
         ⋯
       </summary>
       <div className="absolute right-0 z-30 mt-1 w-44 rounded-[2px] border border-zinc-700 bg-zinc-900 text-[13px]">
-        <button type="button" onClick={onRestoreFlights} className={item}>
-          Restaurar vuelos…
-        </button>
+        {onRestoreFlights && (
+          <button type="button" onClick={onRestoreFlights} className={item}>
+            Restaurar vuelos…
+          </button>
+        )}
         <Link href={`/s/${code}/setup`} className={item}>
           Variables
         </Link>

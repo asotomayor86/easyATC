@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { flights, marks, sessions } from "@/db/schema";
-import { badRequest, clickTime, json, notFound, ROLE_RE, UUID_RE } from "@/lib/server";
+import { badRequest, clickTime, json, notFound, observerBlocked, ROLE_RE, UUID_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,8 @@ type Ctx = { params: Promise<{ code: string }> };
 export async function POST(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const fromId = typeof body?.fromId === "string" && UUID_RE.test(body.fromId) ? body.fromId : null;
   const intoId = typeof body?.intoId === "string" && UUID_RE.test(body.intoId) ? body.intoId : null;
   const role = typeof body?.role === "string" && ROLE_RE.test(body.role) ? body.role : null;

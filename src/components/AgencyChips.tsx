@@ -1,7 +1,7 @@
 "use client";
 
 import { AGENCY_LIST, agencyChannel, agencyName } from "@/lib/guion";
-import type { AgencyStateName, Role, Vars } from "@/lib/types";
+import type { AgencyStateName, Seat, Vars } from "@/lib/types";
 
 export function AgencyChips({
   states,
@@ -12,7 +12,7 @@ export function AgencyChips({
   onPress,
 }: {
   states: Map<string, AgencyStateName>;
-  role: Role;
+  role: Seat;
   current?: string;
   /** Vuelos que hay ahora en cada agencia: un punto de su color por vuelo. */
   flightsAt: Record<string, { id: string; name: string; color: string }[]>;

@@ -1,7 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { flights, marks, sessions, steps } from "@/db/schema";
-import { badRequest, clickTime, findSession, json, notFound, ROLE_RE, UUID_RE } from "@/lib/server";
+import { badRequest, clickTime, findSession, json, notFound, observerBlocked, ROLE_RE, UUID_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,8 @@ type Ctx = { params: Promise<{ code: string }> };
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const stepId = typeof body?.stepId === "string" && UUID_RE.test(body.stepId) ? body.stepId : null;
   const flightId = typeof body?.flightId === "string" && UUID_RE.test(body.flightId) ? body.flightId : null;
   const status = ["ok", "warn", "ko", "na"].includes(body?.status) ? (body.status as string) : null;

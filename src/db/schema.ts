@@ -56,6 +56,9 @@ export const flights = pgTable(
     parentId: uuid("parent_id"),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Standby: comunicación en pausa con el vuelo, desde cuándo y quién lo puso.
+    standbyAt: timestamp("standby_at", { withTimezone: true }),
+    standbyBy: text("standby_by"),
     // Vuelo que absorbió (combinación): indicativo y hora.
     mergedFrom: text("merged_from"),
     mergedAt: timestamp("merged_at", { withTimezone: true }),

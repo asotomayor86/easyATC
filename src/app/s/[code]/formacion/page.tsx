@@ -26,6 +26,14 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
         y elegir tu puesto, dentro.
       </p>
 
+      <p className="mb-10 rounded-[2px] border border-zinc-800 border-l-4 border-l-zinc-500 bg-zinc-900/60 px-4 py-3 text-[15px] text-zinc-300">
+        <b className="text-zinc-100">¿Y si solo vienes a mirar?</b> En la pantalla de entrada, además de C1, C2 y C3,
+        está el puesto de <b className="text-zinc-100">Observador</b>. Ve el ejercicio entero y se mueve por él igual
+        que un controlador —cambiar de agencia, plegar y desplegar, consultar planes de vuelo—, pero no puede marcar
+        transmisiones, ni abrir o cerrar agencias, ni tocar el reloj, ni mover vuelos por los tableros. Los botones se
+        ven apagados a propósito: así se sabe de un vistazo que ahí no hay nada que tocar.
+      </p>
+
       <Section n="1" title="Qué es cada cosa de la pantalla">
         <Item title="Barra de sesión (arriba del todo)">
           A la izquierda, el código de la sesión y tu puesto —<Key>C1 ▾</Key>—: se pulsa para cambiarlo. Al lado, el
@@ -186,6 +194,11 @@ export default async function FormacionPage({ params }: { params: Promise<{ code
             <li>
               <b>Enviar a ▸</b>: manda el vuelo a la entrada de cualquier agencia, sin arrastrarlo. Útil para
               corregir un error o saltarse un paso.
+            </li>
+            <li>
+              <b>Poner en standby</b>: deja en pausa la comunicación con ese vuelo. Su pastilla cambia de fondo y
+              lleva la marca <b className="text-warn">STBY</b> mientras dure, y su ficha anota desde cuándo y quién
+              lo puso. Se quita desde el mismo menú.
             </li>
           </Card>
         </div>

@@ -1,7 +1,7 @@
 import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { flights, sessions } from "@/db/schema";
-import { json, notFound } from "@/lib/server";
+import { json, notFound, observerBlocked } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,10 @@ type Ctx = { params: Promise<{ code: string }> };
  * recrea los que se absorbieron, con sus variables originales. No toca las
  * marcas ni los textos.
  */
-export async function POST(_req: Request, { params }: Ctx) {
+export async function POST(req: Request, { params }: Ctx) {
+  const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const { code } = await params;
   const db = getDb();
   const [session] = await db

@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { agencyStates, sessions } from "@/db/schema";
 import { GUION } from "@/lib/guion";
-import { badRequest, findSession, json, notFound, ROLE_RE } from "@/lib/server";
+import { badRequest, findSession, json, notFound, observerBlocked, ROLE_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,8 @@ const AGENCIES = new Set(GUION.agencias.map((a) => a.id));
 export async function PATCH(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const agency = typeof body?.agency === "string" && AGENCIES.has(body.agency) ? body.agency : null;
   const state = STATES.includes(body?.state) ? (body.state as string) : null;
   const role = typeof body?.role === "string" && ROLE_RE.test(body.role) ? body.role : null;

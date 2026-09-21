@@ -52,6 +52,8 @@ export const BoardStrip = memo(function BoardStrip({
   onMoves,
   onSplit,
   onMerge,
+  onStandby,
+  readOnly,
   open: boardOpen,
 }: {
   zones: Zone[];
@@ -73,6 +75,9 @@ export const BoardStrip = memo(function BoardStrip({
   onMoves: (moves: Move[]) => void;
   onSplit: (flight: Flight) => void;
   onMerge: (from: Flight, into: Flight) => void;
+  onStandby: (flight: Flight, on: boolean) => void;
+  /** Observador: mira y consulta planes de vuelo, pero no mueve ni abre el menú. */
+  readOnly: boolean;
   /** El tablero entero desplegado o plegado: se manda desde la cabecera. */
   open: boolean;
 }) {
@@ -157,10 +162,14 @@ export const BoardStrip = memo(function BoardStrip({
     const color = colorOf(f);
     const isSelected = selected === f.id;
     const isDragged = drag?.id === f.id;
+    // En standby la pastilla cambia de fondo: la comunicación está en pausa.
+    const standby = !!f.standbyAt;
     return (
       <span
         key={f.id}
-        aria-label={`${f.callsign}: arrastra o toca para mover`}
+        aria-label={`${f.callsign}${standby ? " (en standby)" : ""}: ${
+          readOnly ? "toca para ver su plan de vuelo" : "arrastra o toca para mover"
+        }`}
         onPointerEnter={(e) => {
           if (e.pointerType !== "mouse") return;
           const r = e.currentTarget.getBoundingClientRect();
@@ -169,6 +178,7 @@ export const BoardStrip = memo(function BoardStrip({
         onPointerLeave={() => setHover(null)}
         onContextMenu={(e) => {
           e.preventDefault();
+          if (readOnly) return;
           setHover(null);
           setSelected(null);
           setTapped(null);
@@ -178,6 +188,7 @@ export const BoardStrip = memo(function BoardStrip({
           if (e.button !== 0) return;
           setHover(null);
           e.stopPropagation();
+          if (readOnly) return;
           start.current = { id: f.id, x: e.clientX, y: e.clientY, dragging: false };
           e.currentTarget.setPointerCapture(e.pointerId);
           if (e.pointerType !== "mouse") {
@@ -203,6 +214,13 @@ export const BoardStrip = memo(function BoardStrip({
         }}
         onPointerUp={(e) => {
           clearTimeout(longPress.current);
+          if (readOnly) {
+            // Sin mover nada: un toque solo abre o cierra su plan de vuelo.
+            if (e.button !== 0) return;
+            const r = e.currentTarget.getBoundingClientRect();
+            setTapped((cur) => (cur?.id === f.id ? null : { id: f.id, left: r.left, bottom: r.bottom }));
+            return;
+          }
           const s = start.current;
           start.current = null;
           if (!s) return;
@@ -227,20 +245,25 @@ export const BoardStrip = memo(function BoardStrip({
         }}
         // El toque sobre la pastilla la selecciona; no debe llegar a la zona de debajo.
         onClick={(e) => e.stopPropagation()}
-        className={`inline-flex cursor-grab touch-none items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-cond text-[14px] leading-none font-semibold text-zinc-50 select-none ${
+        className={`inline-flex touch-none items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-cond text-[14px] leading-none font-semibold text-zinc-50 select-none ${
+          readOnly ? "cursor-default" : "cursor-grab"
+        } ${standby ? "border-dashed bg-warn/25" : ""} ${
           isSelected ? "ring-2 ring-gold ring-offset-1 ring-offset-zinc-950" : ""
         } ${isDragged ? "opacity-30" : ""}`}
         style={{
           borderColor: color,
           // Los vuelos nacidos de una división llevan un rayado diagonal del mismo color.
-          background: f.parentId
-            ? `repeating-linear-gradient(45deg, ${color}22 0 5px, ${color}66 5px 10px)`
-            : `${color}2e`,
+          background: standby
+            ? undefined
+            : f.parentId
+              ? `repeating-linear-gradient(45deg, ${color}22 0 5px, ${color}66 5px 10px)`
+              : `${color}2e`,
         }}
       >
         {index !== undefined && <span className="text-[11px] text-zinc-300">{index}º</span>}
         <span className="h-2 w-2 rounded-full" style={{ background: color }} />
         {f.vars.corto || f.callsign}
+        {standby && <span className="kicker text-[9px] text-warn">STBY</span>}
       </span>
     );
   };
@@ -253,7 +276,7 @@ export const BoardStrip = memo(function BoardStrip({
     return (
       <div
         data-drop={key}
-        onClick={() => selected && moveTo(selected, key)}
+        onClick={() => !readOnly && selected && moveTo(selected, key)}
         className={`tint flex min-w-0 flex-1 flex-wrap content-start items-center gap-1.5 rounded-[2px] border border-dashed px-1.5 py-1 ${
           opts.minH ?? "min-h-[30px]"
         } ${
@@ -384,6 +407,10 @@ export const BoardStrip = memo(function BoardStrip({
               onMoves={(moves) => {
                 setMenu(null);
                 onMoves(moves);
+              }}
+              onStandby={(f, on) => {
+                setMenu(null);
+                onStandby(f, on);
               }}
               onClose={() => setMenu(null)}
             />

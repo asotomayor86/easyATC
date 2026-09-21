@@ -39,6 +39,7 @@ export function FlightMenu({
   onSplit,
   onMerge,
   onMoves,
+  onStandby,
   onClose,
 }: {
   request: MenuRequest;
@@ -52,6 +53,8 @@ export function FlightMenu({
   onSplit: (flight: Flight) => void;
   onMerge: (from: Flight, into: Flight) => void;
   onMoves: (moves: Move[]) => void;
+  /** Pone o quita el standby: la comunicación con el vuelo queda en pausa. */
+  onStandby: (flight: Flight, on: boolean) => void;
   onClose: () => void;
 }) {
   const { flight, x, y } = request;
@@ -85,6 +88,15 @@ export function FlightMenu({
       <p className="kicker border-b border-zinc-800 px-3 pb-1.5 text-[10px] text-gold">
         {flight.vars.corto || flight.callsign}
       </p>
+      <button
+        type="button"
+        role="menuitem"
+        className={`${ITEM} ${flight.standbyAt ? "text-warn" : ""}`}
+        onClick={() => onStandby(flight, !flight.standbyAt)}
+      >
+        {flight.standbyAt ? "Quitar el standby" : "Poner en standby"}
+      </button>
+      <div className="my-1 border-t border-zinc-800" />
       <button type="button" role="menuitem" className={ITEM} onClick={() => onSplit(flight)}>
         Dividir vuelo…
       </button>

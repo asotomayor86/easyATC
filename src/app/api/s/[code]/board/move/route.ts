@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { AGENCY_LIST } from "@/lib/guion";
-import { badRequest, clickTime, json, notFound, UUID_RE } from "@/lib/server";
+import { badRequest, clickTime, json, notFound, observerBlocked, UUID_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,8 @@ const SLOT = /^[a-z0-9_]{1,30}(\.[a-z0-9_]{1,30})?$/;
 export async function POST(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const agency = String(body?.agency ?? "");
   const flightId = String(body?.flightId ?? "");
   const zone = String(body?.zone ?? "");

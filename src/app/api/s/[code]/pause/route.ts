@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { badRequest, clickTime, json, notFound } from "@/lib/server";
+import { badRequest, clickTime, json, notFound, observerBlocked } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,8 @@ type Ctx = { params: Promise<{ code: string }> };
 export async function POST(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const action = body?.action;
   if (action !== "pause" && action !== "resume") return badRequest("action debe ser pause o resume");
   const at = clickTime(body?.at).toISOString();

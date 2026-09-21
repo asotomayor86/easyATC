@@ -4,6 +4,8 @@ import { getDb } from "@/db";
 import { sessions } from "@/db/schema";
 
 export const ROLE_RE = /^C[123]$/;
+/** Puestos que se registran en la presencia: los controladores y el observador. */
+export const SEAT_RE = /^(C[123]|OBS)$/;
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function json(data: unknown, status = 200) {
@@ -16,6 +18,14 @@ export function notFound() {
 
 export function badRequest(msg: string) {
   return json({ error: msg }, 400);
+}
+
+/**
+ * Los observadores miran, no escriben. Se comprueba en el servidor porque un
+ * toque sin querer desde su pantalla no debe cambiar el ejercicio de nadie.
+ */
+export function observerBlocked(role: unknown) {
+  return role === "OBS" ? json({ error: "Los observadores no pueden cambiar nada" }, 403) : null;
 }
 
 export async function findSession(code: string) {

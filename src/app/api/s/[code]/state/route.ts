@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { agencyStates, marks } from "@/db/schema";
-import { json, notFound, ROLE_RE } from "@/lib/server";
+import { json, notFound, SEAT_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: Ctx) {
   const upper = code.toUpperCase();
 
   const entry =
-    role && ROLE_RE.test(role) && cid && /^[\w-]{4,64}$/.test(cid)
+    role && SEAT_RE.test(role) && cid && /^[\w-]{4,64}$/.test(cid)
       ? sql`jsonb_build_object(${cid}::text, jsonb_build_object('role', ${role}::text, 'at', now()))`
       : sql`'{}'::jsonb`;
 
@@ -69,7 +69,7 @@ export async function GET(req: Request, { params }: Ctx) {
       .where(eq(agencyStates.sessionId, s.id)),
   ]);
 
-  const presence = { C1: 0, C2: 0, C3: 0 } as Record<string, number>;
+  const presence = { C1: 0, C2: 0, C3: 0, OBS: 0 } as Record<string, number>;
   for (const p of Object.values(s.presence ?? {})) {
     if (p.role in presence) presence[p.role]++;
   }

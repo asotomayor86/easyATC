@@ -37,6 +37,8 @@ export async function GET(_req: Request, { params }: Ctx) {
         vars: flights.vars,
         parentId: flights.parentId,
         createdBy: flights.createdBy,
+        standbyAt: flights.standbyAt,
+        standbyBy: flights.standbyBy,
         mergedFrom: flights.mergedFrom,
         mergedAt: flights.mergedAt,
       })

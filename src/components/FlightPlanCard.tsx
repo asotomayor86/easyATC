@@ -47,6 +47,12 @@ export function FlightPlanCard({
           ))}
         </dl>
       )}
+      {flight.standbyAt && (
+        <p className="mt-1.5 border-t border-zinc-800 pt-1.5 text-[12px] text-warn">
+          En standby desde las {formatTime(flight.standbyAt)}
+          {flight.standbyBy ? ` · lo puso ${flight.standbyBy}` : ""}
+        </p>
+      )}
       {flight.mergedFrom && flight.mergedAt && (
         <p className="mt-1.5 border-t border-zinc-800 pt-1.5 text-[12px] text-zinc-500">
           Absorbió a {flight.mergedFrom} a las {formatTime(flight.mergedAt)}

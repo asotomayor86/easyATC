@@ -126,16 +126,24 @@ pueden descargar en local: el paso 3 es opcional en ese caso.
   - Botón derecho (o pulsación larga en táctil) sobre una pastilla:
     **dividir** el vuelo (nace sin plan, con el color del original rayado, en
     la entrada de esa agencia), **combinar** con otro vuelo de la agencia (el
-    elegido sobrevive y hereda las marcas del absorbido) o **enviar a** la
-    entrada de cualquier agencia. El menú ⋯ de la cabecera tiene «Restaurar
-    vuelos», que deshace divisiones y combinaciones; el reset no las toca.
+    elegido sobrevive y hereda las marcas del absorbido), **enviar a** la
+    entrada de cualquier agencia o ponerlo en **standby**. En standby la
+    comunicación con ese vuelo queda en pausa: su pastilla cambia de fondo
+    (ámbar, con borde discontinuo y la marca STBY) y su ficha anota desde
+    cuándo y quién lo puso. El reset lo quita, como a las marcas. El menú ⋯ de
+    la cabecera tiene «Restaurar vuelos», que deshace divisiones y
+    combinaciones; el reset no las toca.
 - **Exportar / Importar JSON** (en Guion y en Variables) — descarga o carga la
   misión completa (variables, vuelos y guion) en el formato de `guion.json`,
   con los campos `checklist` y `cuenta` en cada paso.
   Importar sustituye todo eso en la sesión y borra sus marcas, el estado de
   las agencias y la hora de inicio; si el archivo no es válido, no se toca nada.
-- **`/s/CODIGO`** — vista del controlador. Elige C1, C2 o C3; el rol se
-  recuerda en ese navegador y se cambia pulsando el rol en la cabecera.
+- **`/s/CODIGO`** — vista del controlador. Elige C1, C2, C3 u **observador**;
+  el puesto se recuerda en ese navegador y se cambia pulsándolo en la cabecera.
+  El observador lo ve todo y se mueve por la aplicación —cambiar de agencia,
+  plegar y desplegar, consultar planes de vuelo— pero no puede marcar, ni abrir
+  agencias, ni tocar el reloj, ni mover vuelos: el servidor rechaza cualquier
+  escritura que venga de su puesto.
   Las nueve agencias van una al lado de otra: la de trabajo en el centro y
   las vecinas asomando a los lados. Se cambia con los botones laterales,
   deslizando, con las flechas ← → del teclado o pulsando su ficha arriba.

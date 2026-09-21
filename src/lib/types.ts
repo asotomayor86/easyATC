@@ -3,6 +3,10 @@ import type { Board, BoardState } from "./board";
 export type Vars = Record<string, string>;
 export type Role = "C1" | "C2" | "C3";
 export const ROLES: Role[] = ["C1", "C2", "C3"];
+/** Puesto desde el que se mira la sesión: los tres controladores y el observador. */
+export const OBSERVER = "OBS";
+export type Seat = Role | typeof OBSERVER;
+export const isObserver = (seat: Seat | null): boolean => seat === OBSERVER;
 
 export interface Session {
   id: string;
@@ -25,6 +29,9 @@ export interface Flight {
   vars: Vars;
   /** Vuelo del que se desprendió, si nació de una división. */
   parentId?: string | null;
+  /** Standby: comunicación en pausa con este vuelo, desde cuándo y quién lo puso. */
+  standbyAt?: string | null;
+  standbyBy?: string | null;
   createdBy?: string | null;
   /** Indicativo que absorbió y cuándo, si hubo una combinación. */
   mergedFrom?: string | null;
@@ -91,5 +98,5 @@ export interface StateData {
   boardState: BoardState;
   marks: Mark[];
   agencies: AgencyState[];
-  presence: Record<Role, number>;
+  presence: Record<Seat, number>;
 }

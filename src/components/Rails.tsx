@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { rowKey } from "@/lib/progress";
-import type { Flight, Mark, MarkStatus, Role, Step } from "@/lib/types";
+import type { Flight, Mark, MarkStatus, Role, Seat, Step } from "@/lib/types";
 import { StatusCounts } from "./StatusCounts";
 
 /**
@@ -21,7 +21,7 @@ export const Rails = memo(function Rails({
   steps: Step[];
   flights: Flight[];
   marks: Map<string, Mark>;
-  role: Role;
+  role: Seat;
   onJump: (rowKey: string) => void;
 }) {
   // Las comunicaciones que no cuentan no aparecen en los rieles.

@@ -23,6 +23,7 @@ export const StepRow = memo(function StepRow({
   sessionVars,
   highlighted,
   onSet,
+  readOnly = false,
   showCallsign = true,
   formatTime = wallTime,
   checklistOnly = false,
@@ -34,6 +35,8 @@ export const StepRow = memo(function StepRow({
   sessionVars: Vars;
   highlighted: boolean;
   onSet: SetStatus;
+  /** Observador: ve las marcas de los demás, pero no puede poner ninguna. */
+  readOnly?: boolean;
   /** Dentro de un grupo de vuelo el indicativo ya está en la cabecera del grupo. */
   showCallsign?: boolean;
   /** Hora de misión de la marca, una vez pulsado Inicio. */
@@ -55,7 +58,7 @@ export const StepRow = memo(function StepRow({
     >
       <div className="flex shrink-0">
         {MARK_STATUSES.map((k) => (
-          <MarkButton key={k} kind={k} active={status === k} onClick={() => toggle(k)} />
+          <MarkButton key={k} kind={k} active={status === k} disabled={readOnly} onClick={() => toggle(k)} />
         ))}
       </div>
 
@@ -145,19 +148,30 @@ const BUTTONS: Record<MarkStatus, { icon: string; label: string; on: string; off
   },
 };
 
-function MarkButton({ kind, active, onClick }: { kind: MarkStatus; active: boolean; onClick: () => void }) {
+function MarkButton({
+  kind,
+  active,
+  disabled,
+  onClick,
+}: {
+  kind: MarkStatus;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
   const b = BUTTONS[kind];
   return (
     <button
       type="button"
       aria-pressed={active}
       aria-label={b.label}
+      disabled={disabled}
       onClick={onClick}
-      className="hit flex h-[30px] w-[30px] items-center justify-center"
+      className="hit flex h-[30px] w-[30px] items-center justify-center disabled:cursor-default"
     >
       <span
         className={`tint flex h-[22px] w-[22px] items-center justify-center rounded-[2px] border text-[13px] leading-none font-bold ${
-          active ? b.on : b.off
+          active ? b.on : disabled ? "border-zinc-800 text-zinc-700" : b.off
         } ${kind === "na" ? "text-[9px] tracking-tight" : ""}`}
       >
         {b.icon}

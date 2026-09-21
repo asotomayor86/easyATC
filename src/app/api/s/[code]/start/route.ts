@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { sessions } from "@/db/schema";
-import { clickTime, json, notFound } from "@/lib/server";
+import { clickTime, json, notFound, observerBlocked } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,8 @@ type Ctx = { params: Promise<{ code: string }> };
 export async function POST(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const [row] = await getDb()
     .update(sessions)
     .set({ startedAt: clickTime(body?.at), pauses: [], updatedAt: sql`now()` })

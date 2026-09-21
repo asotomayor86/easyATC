@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import { flights, sessions } from "@/db/schema";
 import { normalizeBoard } from "@/lib/board";
 import { AGENCY_LIST } from "@/lib/guion";
-import { badRequest, clickTime, json, notFound, ROLE_RE, UUID_RE } from "@/lib/server";
+import { badRequest, clickTime, json, notFound, observerBlocked, ROLE_RE, UUID_RE } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +20,8 @@ const MAX_FLIGHTS = 20;
 export async function POST(req: Request, { params }: Ctx) {
   const { code } = await params;
   const body = await req.json().catch(() => null);
+  const blocked = observerBlocked(body?.role);
+  if (blocked) return blocked;
   const flightId = typeof body?.flightId === "string" && UUID_RE.test(body.flightId) ? body.flightId : null;
   const nombre = String(body?.nombre ?? "").trim().slice(0, 40);
   const agency = String(body?.agency ?? "");
