@@ -9,7 +9,8 @@ código de sesión, entra.
 Historia, arquitectura y operación:
 [docs/SESION-2026-09-18.md](docs/SESION-2026-09-18.md) (base de la aplicación),
 [docs/SESION-2026-09-19.md](docs/SESION-2026-09-19.md) (tablero y plan de vuelo) y
-[docs/SESION-2026-09-20.md](docs/SESION-2026-09-20.md) (uso en tableta y formación).
+[docs/SESION-2026-09-20.md](docs/SESION-2026-09-20.md) (uso en tableta y formación) y
+[docs/SESION-2026-09-21.md](docs/SESION-2026-09-21.md) (observador y standby).
 
 ## Puesta en marcha
 
